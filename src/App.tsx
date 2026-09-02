@@ -164,6 +164,7 @@ export function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const activeProjectRef = useRef<StudioProject | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
+  const stopAutosave = useRef<(() => void) | undefined>(undefined);
   const hydrating = useRef(false);
 
   const refreshProjects = useCallback(async () => {
@@ -187,35 +188,39 @@ export function App() {
   // A document-only listener misses select() calls made immediately after creating a shape.
   useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "all" }), [editor]);
 
-  useEffect(() => {
-    if (!editor || !activeProject) return;
-    return editor.store.listen(() => {
+  const scheduleAutosave = useCallback((instance: Editor) => {
       if (hydrating.current) return;
       window.clearTimeout(saveTimer.current);
       setSaveStatus("saving");
       saveTimer.current = window.setTimeout(() => {
         const current = activeProjectRef.current;
         if (!current) return;
-        const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), current.document, readConnections(editor)));
+        const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(instance), current.document, readConnections(instance)));
         const updated = { ...current, name: document.name, mode: document.mode, updatedAt: document.updatedAt, document };
         void projectRepository.saveProject(updated)
           .then(() => { rememberProject(updated); setSaveStatus("saved"); })
           .catch(() => setSaveStatus("error"));
       }, 450);
-    }, { scope: "document" });
-  }, [activeProject?.id, editor, rememberProject]);
+  }, [rememberProject]);
+
+  useEffect(() => () => {
+    stopAutosave.current?.();
+    window.clearTimeout(saveTimer.current);
+  }, []);
 
   const onMount = useCallback((instance: Editor) => {
     setEditor(instance);
     const project = activeProjectRef.current;
     if (!project) return;
+    stopAutosave.current?.();
+    stopAutosave.current = instance.store.listen(() => scheduleAutosave(instance), { scope: "document" });
     hydrating.current = true;
     if (instance.getCurrentPageShapes().length) instance.deleteShapes(Array.from(instance.getCurrentPageShapeIds()));
     project.document.elements.forEach((element) => addToEditor(instance, element));
     project.document.connections.forEach((connection) => addConnectionToEditor(instance, connection));
     if (project.document.elements.length) instance.zoomToFit({ animation: { duration: 240 } });
     hydrating.current = false;
-  }, []);
+  }, [scheduleAutosave]);
 
   const addObject = () => {
     if (!editor) return;
@@ -400,6 +405,8 @@ export function App() {
 
   const leaveProject = () => {
     window.clearTimeout(saveTimer.current);
+    stopAutosave.current?.();
+    stopAutosave.current = undefined;
     activeProjectRef.current = null;
     setActiveProject(null);
     setEditor(null);
