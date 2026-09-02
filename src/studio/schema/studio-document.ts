@@ -28,6 +28,9 @@ export const StudioConnectionSchema = z.object({
   type: z.enum(["flow", "dependency", "relationship", "loop", "generic"]),
   label: z.string().optional(),
   properties: z.record(z.unknown()).optional(),
+  intent: z.array(z.string()).optional(),
+  implementationNotes: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const StudioDocumentSchema = z.object({
@@ -39,9 +42,32 @@ export const StudioDocumentSchema = z.object({
   connections: z.array(StudioConnectionSchema),
   groups: z.array(z.record(z.unknown())), assets: z.array(z.record(z.unknown())),
   metadata: z.record(z.unknown()),
+}).superRefine((document, context) => {
+  const elementIds = new Set<string>();
+  for (const [index, element] of document.elements.entries()) {
+    if (elementIds.has(element.id)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "id"], message: `Duplicate element ID: ${element.id}` });
+    }
+    elementIds.add(element.id);
+  }
+
+  const connectionIds = new Set<string>();
+  for (const [index, connection] of document.connections.entries()) {
+    if (connectionIds.has(connection.id)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["connections", index, "id"], message: `Duplicate connection ID: ${connection.id}` });
+    }
+    connectionIds.add(connection.id);
+    if (!elementIds.has(connection.sourceElementId)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["connections", index, "sourceElementId"], message: `Missing source element: ${connection.sourceElementId}` });
+    }
+    if (!elementIds.has(connection.targetElementId)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["connections", index, "targetElementId"], message: `Missing target element: ${connection.targetElementId}` });
+    }
+  }
 });
 
 export type StudioElement = z.infer<typeof StudioElementSchema>;
+export type StudioConnection = z.infer<typeof StudioConnectionSchema>;
 export type StudioDocument = z.infer<typeof StudioDocumentSchema>;
 
 export function migrateStudioDocument(value: unknown): unknown {
