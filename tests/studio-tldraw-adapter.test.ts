@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { studioDocumentToTldrawShapes, tldrawShapesToStudioDocument } from "../src/canvas/adapter/studio-tldraw-adapter";
+import { studioDocumentToTldrawConnections, studioDocumentToTldrawShapes, tldrawShapesToStudioDocument } from "../src/canvas/adapter/studio-tldraw-adapter";
 import { createStudioDocument } from "../src/studio/schema/studio-document";
 
 describe("canvas adapter", () => {
@@ -13,5 +13,22 @@ describe("canvas adapter", () => {
     expect(restored.elements[0].properties).toEqual(document.elements[0].properties);
     expect(restored.elements[0].intent).toEqual(document.elements[0].intent);
     expect(restored.elements[0].implementationNotes).toEqual(document.elements[0].implementationNotes);
+  });
+  it("round-trips connection direction and semantic metadata", () => {
+    const document = createStudioDocument({
+      id: "doc-1", name: "Connections", mode: "graph",
+      elements: [
+        { id: "source", type: "agent", transform: { x: 0, y: 0, width: 100, height: 60 } },
+        { id: "target", type: "gate", transform: { x: 200, y: 0, width: 100, height: 60 } },
+      ],
+      connections: [{
+        id: "flow-1", sourceElementId: "source", targetElementId: "target", type: "flow",
+        label: "approved", properties: { condition: "score > 0.8" }, intent: ["Only continue after approval."],
+      }],
+    });
+    const shapes = studioDocumentToTldrawShapes(document);
+    const connections = studioDocumentToTldrawConnections(document);
+    const restored = tldrawShapesToStudioDocument(shapes, document, connections);
+    expect(restored.connections).toEqual(document.connections);
   });
 });
