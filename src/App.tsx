@@ -8,6 +8,16 @@ import { IndexedDbProjectRepository, createProject, duplicateProject, snapshotPr
 
 const projectRepository = new IndexedDbProjectRepository();
 
+function routedProjectId() {
+  const match = window.location.hash.match(/^#project=(.+)$/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
 function addToEditor(editor: Editor, element: StudioElement) {
   const record = studioElementToTldrawShape(element);
   editor.createShape({
@@ -167,22 +177,43 @@ export function App() {
   const stopAutosave = useRef<(() => void) | undefined>(undefined);
   const hydrating = useRef(false);
 
-  const refreshProjects = useCallback(async () => {
-    try {
-      setProjects(await projectRepository.listProjects());
-    } finally {
-      setProjectsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void refreshProjects(); }, [refreshProjects]);
-
   const rememberProject = useCallback((project: StudioProject) => {
     activeProjectRef.current = project;
     setActiveProject(project);
     setProjects((current) => [project, ...current.filter((item) => item.id !== project.id)]
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
   }, []);
+
+  const activateProject = useCallback((project: StudioProject) => {
+    const copy = structuredClone(project);
+    activeProjectRef.current = copy;
+    setActiveProject(copy);
+    setEditor(null);
+    setInspectorOpen(false);
+    setVersionsOpen(false);
+  }, []);
+
+  const refreshProjects = useCallback(async () => {
+    try {
+      const storedProjects = await projectRepository.listProjects();
+      setProjects(storedProjects);
+      const routeId = routedProjectId();
+      const routedProject = routeId ? storedProjects.find((project) => project.id === routeId) : undefined;
+      if (routedProject) activateProject(routedProject);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [activateProject]);
+
+  useEffect(() => {
+    const routeId = routedProjectId();
+    if (routeId && window.history.state?.projectId !== routeId) {
+      const projectUrl = window.location.href;
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      window.history.pushState({ projectId: routeId }, "", projectUrl);
+    }
+    void refreshProjects();
+  }, [refreshProjects]);
 
   // Selection lives in tldraw's session state, so listen to the whole store.
   // A document-only listener misses select() calls made immediately after creating a shape.
@@ -207,6 +238,34 @@ export function App() {
     stopAutosave.current?.();
     window.clearTimeout(saveTimer.current);
   }, []);
+
+  useEffect(() => {
+    const followBrowserHistory = () => {
+      const routeId = routedProjectId();
+      if (routeId) {
+        void projectRepository.loadProject(routeId).then((project) => {
+          if (project && routedProjectId() === routeId) activateProject(project);
+        });
+        return;
+      }
+      window.clearTimeout(saveTimer.current);
+      stopAutosave.current?.();
+      stopAutosave.current = undefined;
+      const current = activeProjectRef.current;
+      if (current && editor) {
+        const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), current.document, readConnections(editor)));
+        void projectRepository.saveProject({ ...current, updatedAt: document.updatedAt, document });
+      }
+      activeProjectRef.current = null;
+      setActiveProject(null);
+      setEditor(null);
+      setInspectorOpen(false);
+      setVersionsOpen(false);
+      void refreshProjects();
+    };
+    window.addEventListener("popstate", followBrowserHistory);
+    return () => window.removeEventListener("popstate", followBrowserHistory);
+  }, [activateProject, editor, refreshProjects]);
 
   const onMount = useCallback((instance: Editor) => {
     setEditor(instance);
@@ -393,26 +452,17 @@ export function App() {
     const project = createProject(name, mode);
     await projectRepository.saveProject(project);
     rememberProject(project);
+    window.history.pushState({ projectId: project.id }, "", `#project=${encodeURIComponent(project.id)}`);
   };
 
   const openProject = (project: StudioProject) => {
-    activeProjectRef.current = structuredClone(project);
-    setActiveProject(structuredClone(project));
-    setEditor(null);
-    setInspectorOpen(false);
-    setVersionsOpen(false);
+    activateProject(project);
+    window.history.pushState({ projectId: project.id }, "", `#project=${encodeURIComponent(project.id)}`);
   };
 
   const leaveProject = () => {
-    window.clearTimeout(saveTimer.current);
-    stopAutosave.current?.();
-    stopAutosave.current = undefined;
-    activeProjectRef.current = null;
-    setActiveProject(null);
-    setEditor(null);
-    setInspectorOpen(false);
-    setVersionsOpen(false);
-    void refreshProjects();
+    if (routedProjectId()) window.history.back();
+    else window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
   };
 
   const renameProject = (name: string) => {
