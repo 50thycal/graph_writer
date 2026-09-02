@@ -51,7 +51,7 @@ button { font: inherit; }
 .semantic-connection-trigger span { color: #3e8a67; font-size: 16px; margin-right: 3px; }
 .semantic-connection-trigger.active { background: #e8f4ed; border-color: #68a487; }
 footer { color: #6f7c77; font-size: 10px; font-weight: 650; letter-spacing: .04em; padding: 0 8px; text-transform: uppercase; }
-.project-dashboard { background: #eef1ed; min-height: 100dvh; padding: 24px clamp(18px, 4vw, 64px) 56px; }
+.project-dashboard { background: #eef1ed; height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 24px clamp(18px, 4vw, 64px) 56px; }
 .dashboard-header { align-items: center; display: flex; justify-content: space-between; margin: 0 auto 42px; max-width: 1180px; }
 .new-project-section, .projects-section { margin: 0 auto 42px; max-width: 1180px; }
 .eyebrow { color: #71807a; font-size: 10px; font-weight: 800; letter-spacing: .15em; margin: 0 0 5px; text-transform: uppercase; }
