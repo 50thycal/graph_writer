@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createShapeId, type Editor, Tldraw } from "tldraw";
+import { createShapeId, getArrowBindings, type Editor, type TLArrowShape, Tldraw } from "tldraw";
 import { toRichText } from "@tldraw/tlschema";
-import { STUDIO_META_KEY, studioElementToTldrawShape, tldrawShapesToStudioDocument, type TldrawShapeRecord } from "./canvas/adapter/studio-tldraw-adapter";
-import { createStudioDocument, parseStudioDocument, type StudioElement } from "./studio/schema/studio-document";
+import { STUDIO_CONNECTION_META_KEY, STUDIO_META_KEY, studioConnectionToTldrawConnection, studioElementToTldrawShape, tldrawShapesToStudioDocument, type TldrawConnectionRecord, type TldrawShapeRecord } from "./canvas/adapter/studio-tldraw-adapter";
+import { createStudioDocument, parseStudioDocument, type StudioConnection, type StudioElement } from "./studio/schema/studio-document";
 
 const seedElement: StudioElement = {
   id: "concept-1", type: "concept", name: "Structured idea",
@@ -46,9 +46,85 @@ function readShapes(editor: Editor): TldrawShapeRecord[] {
     }));
 }
 
+function readConnection(editor: Editor, arrow: TLArrowShape): TldrawConnectionRecord | null {
+  const bindings = getArrowBindings(editor, arrow);
+  if (!bindings.start || !bindings.end) return null;
+  const source = editor.getShape(bindings.start.toId);
+  const target = editor.getShape(bindings.end.toId);
+  const sourceElement = source?.meta[STUDIO_META_KEY] as StudioElement | undefined;
+  const targetElement = target?.meta[STUDIO_META_KEY] as StudioElement | undefined;
+  if (!sourceElement || !targetElement) return null;
+
+  const stored = arrow.meta[STUDIO_CONNECTION_META_KEY] as StudioConnection | undefined;
+  const connection: StudioConnection = {
+    ...(stored ?? {
+      id: `connection-${arrow.id.replace(/^shape:/, "")}`,
+      type: sourceElement.id === targetElement.id ? "loop" : "flow",
+      properties: {},
+    }),
+    sourceElementId: sourceElement.id,
+    targetElementId: targetElement.id,
+    label: editor.getShapeUtil(arrow).getText(arrow)?.trim() || stored?.label || undefined,
+  };
+  return {
+    id: arrow.id,
+    sourceElementId: connection.sourceElementId,
+    targetElementId: connection.targetElementId,
+    label: connection.label ?? "",
+    meta: { [STUDIO_CONNECTION_META_KEY]: connection },
+  };
+}
+
+function readConnections(editor: Editor): TldrawConnectionRecord[] {
+  return editor.getCurrentPageShapes()
+    .filter((shape): shape is TLArrowShape => shape.type === "arrow")
+    .map((arrow) => readConnection(editor, arrow))
+    .filter((connection): connection is TldrawConnectionRecord => Boolean(connection));
+}
+
+function bindArrow(editor: Editor, arrowId: TLArrowShape["id"], sourceElementId: string, targetElementId: string) {
+  editor.createBindings([
+    { type: "arrow", fromId: arrowId, toId: createShapeId(sourceElementId), props: { terminal: "start", normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false } },
+    { type: "arrow", fromId: arrowId, toId: createShapeId(targetElementId), props: { terminal: "end", normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false } },
+  ]);
+}
+
+function addConnectionToEditor(editor: Editor, connection: StudioConnection) {
+  const record = studioConnectionToTldrawConnection(connection);
+  const sourceBounds = editor.getShapePageBounds(createShapeId(connection.sourceElementId));
+  const targetBounds = editor.getShapePageBounds(createShapeId(connection.targetElementId));
+  if (!sourceBounds || !targetBounds) throw new Error(`Could not restore connection ${connection.id}.`);
+  const arrowId = createShapeId(`connection-${connection.id}`);
+  editor.createShape({
+    id: arrowId,
+    type: "arrow",
+    x: sourceBounds.center.x,
+    y: sourceBounds.center.y,
+    props: {
+      start: { x: 0, y: 0 },
+      end: { x: targetBounds.center.x - sourceBounds.center.x, y: targetBounds.center.y - sourceBounds.center.y },
+      arrowheadEnd: "arrow",
+      richText: toRichText(record.label),
+    },
+    meta: { [STUDIO_CONNECTION_META_KEY]: JSON.parse(JSON.stringify(connection)) },
+  });
+  bindArrow(editor, arrowId, connection.sourceElementId, connection.targetElementId);
+}
+
 interface InspectorDraft {
   name: string;
   type: string;
+  intent: string;
+  implementationNotes: string;
+  tags: string;
+  properties: string;
+}
+
+interface ConnectionDraft {
+  label: string;
+  type: StudioConnection["type"];
+  sourceElementId: string;
+  targetElementId: string;
   intent: string;
   implementationNotes: string;
   tags: string;
@@ -66,11 +142,25 @@ function elementToDraft(element: StudioElement): InspectorDraft {
   };
 }
 
+function connectionToDraft(connection: StudioConnection): ConnectionDraft {
+  return {
+    label: connection.label ?? "",
+    type: connection.type,
+    sourceElementId: connection.sourceElementId,
+    targetElementId: connection.targetElementId,
+    intent: (connection.intent ?? []).join("\n"),
+    implementationNotes: (connection.implementationNotes ?? []).join("\n"),
+    tags: (connection.tags ?? []).join(", "),
+    properties: JSON.stringify(connection.properties ?? {}, null, 2),
+  };
+}
+
 export function App() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("Schema v1 ready");
   const [draft, setDraft] = useState<InspectorDraft | null>(null);
+  const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -97,7 +187,7 @@ export function App() {
 
   const exportJson = () => {
     if (!editor) return;
-    const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), basis));
+    const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), basis, readConnections(editor)));
     const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
     const link = window.document.createElement("a");
     link.href = url; link.download = "studio-document.json"; link.click(); URL.revokeObjectURL(url);
@@ -110,6 +200,7 @@ export function App() {
       const document = parseStudioDocument(JSON.parse(await file.text()));
       editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
       document.elements.forEach((element) => addToEditor(editor, element));
+      document.connections.forEach((connection) => addConnectionToEditor(editor, connection));
       editor.zoomToFit({ animation: { duration: 240 } });
       setMessage(`Imported ${document.elements.length} semantic objects`);
     } catch (error) {
@@ -120,10 +211,14 @@ export function App() {
   const count = editor ? readShapes(editor).length : basis.elements.length;
   const selectedShape = editor?.getOnlySelectedShape() ?? null;
   const selectedElement = selectedShape?.meta[STUDIO_META_KEY] as StudioElement | undefined;
+  const selectedConnection = editor && selectedShape?.type === "arrow" ? readConnection(editor, selectedShape) : null;
+  const selectedConnectionData = selectedConnection?.meta[STUDIO_CONNECTION_META_KEY];
+  const hasSemanticSelection = Boolean(selectedElement || selectedConnectionData);
 
   useEffect(() => {
     setDraft(selectedElement ? elementToDraft(selectedElement) : null);
-    setInspectorOpen(Boolean(selectedElement));
+    setConnectionDraft(selectedConnectionData ? connectionToDraft(selectedConnectionData) : null);
+    setInspectorOpen(hasSemanticSelection);
   }, [selectedShape?.id]);
 
   useEffect(() => {
@@ -137,6 +232,10 @@ export function App() {
 
   const updateDraft = (key: keyof InspectorDraft, value: string) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const updateConnectionDraft = <K extends keyof ConnectionDraft>(key: K, value: ConnectionDraft[K]) => {
+    setConnectionDraft((current) => current ? { ...current, [key]: value } : current);
   };
 
   const saveSemanticDetails = () => {
@@ -164,6 +263,38 @@ export function App() {
       setMessage("Semantic details saved");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save semantic details");
+    }
+  };
+
+  const saveConnectionDetails = () => {
+    if (!editor || selectedShape?.type !== "arrow" || !selectedConnectionData || !connectionDraft) return;
+    try {
+      const properties = JSON.parse(connectionDraft.properties || "{}");
+      if (!properties || Array.isArray(properties) || typeof properties !== "object") {
+        throw new Error("Custom properties must be a JSON object.");
+      }
+      const updated: StudioConnection = {
+        ...selectedConnectionData,
+        label: connectionDraft.label.trim() || undefined,
+        type: connectionDraft.type,
+        sourceElementId: connectionDraft.sourceElementId,
+        targetElementId: connectionDraft.targetElementId,
+        intent: connectionDraft.intent.split("\n").map((value) => value.trim()).filter(Boolean),
+        implementationNotes: connectionDraft.implementationNotes.split("\n").map((value) => value.trim()).filter(Boolean),
+        tags: connectionDraft.tags.split(",").map((value) => value.trim()).filter(Boolean),
+        properties,
+      };
+      editor.deleteBindings(editor.getBindingsFromShape(selectedShape, "arrow"));
+      editor.updateShape({
+        id: selectedShape.id,
+        type: "arrow",
+        props: { richText: toRichText(updated.label ?? "") },
+        meta: { ...selectedShape.meta, [STUDIO_CONNECTION_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+      });
+      bindArrow(editor, selectedShape.id, updated.sourceElementId, updated.targetElementId);
+      setMessage("Semantic connection saved");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save semantic connection");
     }
   };
 
@@ -197,9 +328,26 @@ export function App() {
         <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
+      {connectionDraft && selectedConnectionData && inspectorOpen && <aside className="semantic-inspector" aria-label="Semantic connection details">
+        <div className="inspector-heading">
+          <div><p>Attached relationship</p><h2>Connection details</h2></div>
+          <button type="button" className="icon-button" aria-label="Close connection details" onPointerDown={(event) => event.stopPropagation()} onClick={() => setInspectorOpen(false)}>×</button>
+        </div>
+        <label>Label<input value={connectionDraft.label} placeholder="Optional visible label" onChange={(event) => updateConnectionDraft("label", event.target.value)} /></label>
+        <label>Relationship type<select value={connectionDraft.type} onChange={(event) => updateConnectionDraft("type", event.target.value as StudioConnection["type"])}>
+          <option value="flow">Flow</option><option value="dependency">Dependency</option><option value="relationship">Relationship</option><option value="loop">Loop</option><option value="generic">Generic</option>
+        </select></label>
+        <label>Source<select value={connectionDraft.sourceElementId} onChange={(event) => updateConnectionDraft("sourceElementId", event.target.value)}>{readShapes(editor!).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
+        <label>Destination<select value={connectionDraft.targetElementId} onChange={(event) => updateConnectionDraft("targetElementId", event.target.value)}>{readShapes(editor!).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
+        <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={connectionDraft.intent} onChange={(event) => updateConnectionDraft("intent", event.target.value)} /></label>
+        <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={connectionDraft.implementationNotes} onChange={(event) => updateConnectionDraft("implementationNotes", event.target.value)} /></label>
+        <label>Tags<span>Comma separated.</span><input value={connectionDraft.tags} onChange={(event) => updateConnectionDraft("tags", event.target.value)} /></label>
+        <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={connectionDraft.properties} onChange={(event) => updateConnectionDraft("properties", event.target.value)} /></label>
+        <button className="button primary inspector-save" onClick={saveConnectionDetails}>Save connection context</button>
+      </aside>}
       <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
       <div className="semantic-actions" aria-label="Semantic object tools">
-        {selectedElement && <button
+        {hasSemanticSelection && <button
           type="button"
           className={`button secondary semantic-context-trigger${inspectorOpen ? " active" : ""}`}
           aria-label={inspectorOpen ? "Close attached semantic context" : "Edit attached semantic context"}
