@@ -109,6 +109,7 @@ function addConnectionToEditor(editor: Editor, connection: StudioConnection) {
     meta: { [STUDIO_CONNECTION_META_KEY]: JSON.parse(JSON.stringify(connection)) },
   });
   bindArrow(editor, arrowId, connection.sourceElementId, connection.targetElementId);
+  return arrowId;
 }
 
 interface InspectorDraft {
@@ -161,6 +162,7 @@ export function App() {
   const [message, setMessage] = useState("Schema v1 ready");
   const [draft, setDraft] = useState<InspectorDraft | null>(null);
   const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
+  const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -187,11 +189,16 @@ export function App() {
 
   const exportJson = () => {
     if (!editor) return;
-    const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), basis, readConnections(editor)));
+    const connections = readConnections(editor);
+    const arrowCount = editor.getCurrentPageShapes().filter((shape) => shape.type === "arrow").length;
+    const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), basis, connections));
     const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
     const link = window.document.createElement("a");
     link.href = url; link.download = "studio-document.json"; link.click(); URL.revokeObjectURL(url);
-    setMessage("Clean StudioDocument exported");
+    const looseArrowCount = arrowCount - connections.length;
+    setMessage(looseArrowCount > 0
+      ? `Exported ${connections.length} semantic connection${connections.length === 1 ? "" : "s"}; skipped ${looseArrowCount} loose arrow${looseArrowCount === 1 ? "" : "s"}`
+      : `Exported ${connections.length} semantic connection${connections.length === 1 ? "" : "s"}`);
   };
 
   const importJson = async (file: File) => {
@@ -298,6 +305,36 @@ export function App() {
     }
   };
 
+  const createSemanticConnection = () => {
+    if (!editor || !selectedElement) return;
+    if (!connectionSourceId) {
+      setConnectionSourceId(selectedElement.id);
+      setInspectorOpen(false);
+      setMessage(`Connection started from ${selectedElement.name ?? selectedElement.type}. Select its destination.`);
+      return;
+    }
+    if (connectionSourceId === selectedElement.id) {
+      setConnectionSourceId(null);
+      setMessage("Semantic connection cancelled");
+      return;
+    }
+    const id = `connection-${crypto.randomUUID()}`;
+    const arrowId = addConnectionToEditor(editor, {
+      id,
+      sourceElementId: connectionSourceId,
+      targetElementId: selectedElement.id,
+      type: "flow",
+      properties: {},
+      intent: [],
+      implementationNotes: [],
+      tags: [],
+    });
+    setConnectionSourceId(null);
+    editor.select(arrowId);
+    setInspectorOpen(true);
+    setMessage("Semantic connection created");
+  };
+
   return <main className="studio-shell">
     <header className="studio-header">
       <div className="brand-lockup"><span className="brand-mark">GW</span><div><p>Design Studio</p><h1>Foundation proof</h1></div></div>
@@ -347,6 +384,16 @@ export function App() {
       </aside>}
       <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
       <div className="semantic-actions" aria-label="Semantic object tools">
+        {selectedElement && <button
+          type="button"
+          className={`button secondary semantic-connection-trigger${connectionSourceId ? " active" : ""}`}
+          aria-label={connectionSourceId
+            ? connectionSourceId === selectedElement.id ? "Cancel semantic connection" : "Connect to selected semantic object"
+            : "Start semantic connection from selected object"}
+          onClick={createSemanticConnection}
+        ><span aria-hidden="true">→</span> {connectionSourceId
+          ? connectionSourceId === selectedElement.id ? "Cancel connection" : "Connect here"
+          : "Connect"}</button>}
         {hasSemanticSelection && <button
           type="button"
           className={`button secondary semantic-context-trigger${inspectorOpen ? " active" : ""}`}
