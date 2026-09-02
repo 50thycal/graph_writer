@@ -101,8 +101,11 @@ footer span:nth-child(2) { text-align: center; }
   .button { font-size: 11px; padding-inline: 9px; }
   .save-status { display: none; }
   .save-version-button, .import-button { display: none; }
-  .semantic-actions { bottom: 58px; justify-content: flex-end; left: 8px; right: 8px; }
-  .add-object { width: max-content; }
+  .semantic-actions { align-items: flex-start; bottom: auto; flex-direction: column; gap: 6px; left: 9px; right: auto; top: 104px; }
+  .semantic-actions .button { font-size: 0; height: 42px; min-height: 42px; padding: 0; width: 44px; }
+  .semantic-actions .button::after { content: attr(data-short); font-size: 19px; }
+  .semantic-actions .button > span { display: none; }
+  .add-object { order: -1; width: 44px; }
   .semantic-palette { border-radius: 16px 16px 0 0; bottom: 0; left: 0; max-height: 68%; right: 0; width: 100%; }
   .semantic-inspector { border-radius: 16px 16px 0 0; bottom: 0; left: 0; max-height: 66%; top: auto; width: 100%; }
   .versions-panel { border-radius: 16px 16px 0 0; bottom: 0; left: 0; max-height: 75%; right: 0; top: auto; width: 100%; }
@@ -126,10 +129,11 @@ footer span:nth-child(2) { text-align: center; }
   .header-actions .button { font-size: 10px; min-height: 31px; padding-inline: 9px; }
   .save-status, .save-version-button, .import-button { display: none; }
   .canvas-stage { border-radius: 13px; }
-  .semantic-actions { bottom: 9px; gap: 5px; right: 9px; }
+  .semantic-actions { align-items: flex-start; bottom: auto; flex-direction: column; gap: 5px; left: 9px; right: auto; top: 104px; }
   .semantic-actions .button { font-size: 0; height: 40px; min-height: 40px; padding: 0; width: 42px; }
   .semantic-actions .button::after { content: attr(data-short); font-size: 18px; }
   .semantic-actions .button > span { display: none; }
+  .semantic-actions .add-object { order: -1; }
   .semantic-palette { bottom: 56px; max-height: calc(100% - 66px); right: 9px; width: min(420px, calc(100% - 18px)); }
   .semantic-inspector { bottom: 8px; left: 8px; max-height: calc(100% - 16px); top: 8px; width: min(330px, calc(100% - 16px)); }
   .versions-panel { bottom: 8px; max-height: calc(100% - 16px); right: 8px; top: 8px; width: min(350px, calc(100% - 16px)); }
