@@ -32,15 +32,45 @@ function readShapes(editor: Editor): TldrawShapeRecord[] {
     .filter((shape) => shape.type === "geo" && shape.meta[STUDIO_META_KEY])
     .map((shape) => ({
       id: shape.id, type: "geo" as const, x: shape.x, y: shape.y, rotation: shape.rotation,
-      props: { w: (shape.props as { w: number }).w, h: (shape.props as { h: number }).h, label: (shape.meta[STUDIO_META_KEY] as StudioElement).name ?? "Semantic object" },
-      meta: { [STUDIO_META_KEY]: shape.meta[STUDIO_META_KEY] as StudioElement },
+      props: {
+        w: (shape.props as { w: number }).w,
+        h: (shape.props as { h: number }).h,
+        label: editor.getShapeUtil(shape).getText(shape)?.trim() || (shape.meta[STUDIO_META_KEY] as StudioElement).name || "Semantic object",
+      },
+      meta: {
+        [STUDIO_META_KEY]: {
+          ...(shape.meta[STUDIO_META_KEY] as StudioElement),
+          name: editor.getShapeUtil(shape).getText(shape)?.trim() || (shape.meta[STUDIO_META_KEY] as StudioElement).name,
+        },
+      },
     }));
+}
+
+interface InspectorDraft {
+  name: string;
+  type: string;
+  intent: string;
+  implementationNotes: string;
+  tags: string;
+  properties: string;
+}
+
+function elementToDraft(element: StudioElement): InspectorDraft {
+  return {
+    name: element.name ?? "",
+    type: element.type,
+    intent: (element.intent ?? []).join("\n"),
+    implementationNotes: (element.implementationNotes ?? []).join("\n"),
+    tags: (element.tags ?? []).join(", "),
+    properties: JSON.stringify(element.properties ?? {}, null, 2),
+  };
 }
 
 export function App() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("Schema v1 ready");
+  const [draft, setDraft] = useState<InspectorDraft | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "document" }), [editor]);
@@ -85,6 +115,45 @@ export function App() {
   };
 
   const count = editor ? readShapes(editor).length : basis.elements.length;
+  const selectedShape = editor?.getOnlySelectedShape() ?? null;
+  const selectedElement = selectedShape?.meta[STUDIO_META_KEY] as StudioElement | undefined;
+
+  useEffect(() => {
+    setDraft(selectedElement ? elementToDraft(selectedElement) : null);
+  }, [selectedShape?.id]);
+
+  const updateDraft = (key: keyof InspectorDraft, value: string) => {
+    setDraft((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const saveSemanticDetails = () => {
+    if (!editor || !selectedShape || selectedShape.type !== "geo" || !selectedElement || !draft) return;
+    try {
+      const properties = JSON.parse(draft.properties || "{}");
+      if (!properties || Array.isArray(properties) || typeof properties !== "object") {
+        throw new Error("Custom properties must be a JSON object.");
+      }
+      const updated: StudioElement = {
+        ...selectedElement,
+        name: draft.name.trim() || "Untitled semantic object",
+        type: draft.type.trim() || "concept",
+        intent: draft.intent.split("\n").map((value) => value.trim()).filter(Boolean),
+        implementationNotes: draft.implementationNotes.split("\n").map((value) => value.trim()).filter(Boolean),
+        tags: draft.tags.split(",").map((value) => value.trim()).filter(Boolean),
+        properties,
+      };
+      editor.updateShape({
+        id: selectedShape.id,
+        type: "geo",
+        props: { richText: toRichText(updated.name ?? updated.type) },
+        meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+      });
+      setMessage("Semantic details saved");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save semantic details");
+    }
+  };
+
   return <main className="studio-shell">
     <header className="studio-header">
       <div className="brand-lockup"><span className="brand-mark">GW</span><div><p>Design Studio</p><h1>Foundation proof</h1></div></div>
@@ -96,6 +165,19 @@ export function App() {
     </header>
     <section className="canvas-stage" aria-label="Infinite design canvas">
       <Tldraw onMount={onMount} licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY} persistenceKey="graph-writer-ws-002" />
+      {draft && selectedElement && <aside className="semantic-inspector" aria-label="Semantic object details">
+        <div className="inspector-heading">
+          <div><p>Attached context</p><h2>Semantic details</h2></div>
+          <button className="icon-button" aria-label="Close semantic details" onClick={() => editor?.selectNone()}>×</button>
+        </div>
+        <label>Name<input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} /></label>
+        <label>Semantic type<input value={draft.type} onChange={(event) => updateDraft("type", event.target.value)} /></label>
+        <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={draft.intent} onChange={(event) => updateDraft("intent", event.target.value)} /></label>
+        <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={draft.implementationNotes} onChange={(event) => updateDraft("implementationNotes", event.target.value)} /></label>
+        <label>Tags<span>Comma separated.</span><input value={draft.tags} onChange={(event) => updateDraft("tags", event.target.value)} /></label>
+        <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label>
+        <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
+      </aside>}
       <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
       <button className="button primary add-object" onClick={addObject}>＋ Semantic object</button>
     </section>
