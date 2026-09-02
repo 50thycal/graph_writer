@@ -30,6 +30,8 @@ button { font: inherit; }
 .semantic-inspector input:focus, .semantic-inspector textarea:focus { border-color: #4b8074; box-shadow: 0 0 0 3px rgb(75 128 116 / 14%); }
 .semantic-inspector .code-field { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
 .inspector-save { flex: 0 0 auto; width: 100%; }
+.semantic-context-trigger { background: rgb(255 255 255 / 94%); bottom: 62px; box-shadow: 0 8px 24px rgb(24 63 56 / 15%); color: #183f38; position: absolute; right: 14px; z-index: 350; }
+.semantic-context-trigger span { color: #579744; margin-right: 3px; }
 footer { color: #6f7c77; font-size: 10px; font-weight: 650; letter-spacing: .04em; padding: 0 8px; text-transform: uppercase; }
 @media (max-width: 640px) {
   .studio-shell { grid-template-rows: 64px minmax(0, 1fr) 28px; padding: 6px; }
@@ -40,6 +42,7 @@ footer { color: #6f7c77; font-size: 10px; font-weight: 650; letter-spacing: .04e
   .canvas-callout { bottom: 60px; left: 8px; max-width: calc(100% - 16px); right: 8px; }
   .add-object { bottom: 12px; left: 50%; right: auto; transform: translateX(-50%); width: max-content; }
   .semantic-inspector { border-radius: 16px 16px 0 0; bottom: 0; left: 0; max-height: 66%; top: auto; width: 100%; }
+  .semantic-context-trigger { bottom: 60px; left: 50%; right: auto; transform: translateX(-50%); }
   footer { font-size: 8px; padding: 0 4px; }
   footer span:nth-child(2) { display: none; }
 }

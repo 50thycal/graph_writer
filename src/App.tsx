@@ -71,6 +71,7 @@ export function App() {
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("Schema v1 ready");
   const [draft, setDraft] = useState<InspectorDraft | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "document" }), [editor]);
@@ -120,7 +121,17 @@ export function App() {
 
   useEffect(() => {
     setDraft(selectedElement ? elementToDraft(selectedElement) : null);
+    setInspectorOpen(Boolean(selectedElement));
   }, [selectedShape?.id]);
+
+  useEffect(() => {
+    if (!inspectorOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setInspectorOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [inspectorOpen]);
 
   const updateDraft = (key: keyof InspectorDraft, value: string) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
@@ -165,10 +176,16 @@ export function App() {
     </header>
     <section className="canvas-stage" aria-label="Infinite design canvas">
       <Tldraw onMount={onMount} licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY} persistenceKey="graph-writer-ws-002" />
-      {draft && selectedElement && <aside className="semantic-inspector" aria-label="Semantic object details">
+      {draft && selectedElement && inspectorOpen && <aside className="semantic-inspector" aria-label="Semantic object details">
         <div className="inspector-heading">
           <div><p>Attached context</p><h2>Semantic details</h2></div>
-          <button className="icon-button" aria-label="Close semantic details" onClick={() => editor?.selectNone()}>×</button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Close semantic details"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setInspectorOpen(false)}
+          >×</button>
         </div>
         <label>Name<input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} /></label>
         <label>Semantic type<input value={draft.type} onChange={(event) => updateDraft("type", event.target.value)} /></label>
@@ -178,6 +195,13 @@ export function App() {
         <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
+      {selectedElement && !inspectorOpen && <button
+        type="button"
+        className="button secondary semantic-context-trigger"
+        aria-label="Edit attached semantic context"
+        aria-expanded="false"
+        onClick={() => setInspectorOpen(true)}
+      ><span aria-hidden="true">✦</span> Edit context</button>}
       <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
       <button className="button primary add-object" onClick={addObject}>＋ Semantic object</button>
     </section>
