@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createShapeId, getArrowBindings, type Editor, type TLArrowShape, Tldraw } from "tldraw";
+import { createShapeId, getArrowBindings, type Editor, type TLArrowShape, type TLGeoShape, Tldraw } from "tldraw";
 import { toRichText } from "@tldraw/tlschema";
 import { STUDIO_CONNECTION_META_KEY, STUDIO_META_KEY, studioConnectionToTldrawConnection, studioElementToTldrawShape, tldrawShapesToStudioDocument, type TldrawConnectionRecord, type TldrawShapeRecord } from "./canvas/adapter/studio-tldraw-adapter";
 import { parseStudioDocument, type StudioConnection, type StudioElement } from "./studio/schema/studio-document";
 import { ProjectDashboard } from "./features/projects/ProjectDashboard";
 import { IndexedDbProjectRepository, createProject, duplicateProject, snapshotProject, type ProjectVersion, type StudioProject } from "./features/projects/project-repository";
+import { semanticObjectsForMode, type SemanticObjectPreset } from "./studio/catalog/semantic-objects";
 
 const projectRepository = new IndexedDbProjectRepository();
+const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
 
 function routedProjectId() {
   const match = window.location.hash.match(/^#project=(.+)$/);
@@ -20,10 +22,19 @@ function routedProjectId() {
 
 function addToEditor(editor: Editor, element: StudioElement) {
   const record = studioElementToTldrawShape(element);
+  const appearance = element.appearance ?? {};
   editor.createShape({
     id: createShapeId(element.id), type: "geo", x: record.x, y: record.y, rotation: record.rotation,
     isLocked: element.locked,
-    props: { w: record.props.w, h: record.props.h, geo: "rectangle", fill: "solid", color: "blue", size: "m", richText: toRichText(record.props.label) },
+    props: {
+      w: record.props.w,
+      h: record.props.h,
+      geo: (appearance.shape ?? "rectangle") as TLGeoShape["props"]["geo"],
+      fill: (appearance.fill ?? "solid") as TLGeoShape["props"]["fill"],
+      color: (appearance.color ?? "blue") as TLGeoShape["props"]["color"],
+      size: "m",
+      richText: toRichText(record.props.label),
+    },
     meta: { [STUDIO_META_KEY]: JSON.parse(JSON.stringify(record.meta[STUDIO_META_KEY])) },
   });
 }
@@ -169,6 +180,8 @@ export function App() {
   const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [autoOpenInspector, setAutoOpenInspector] = useState(() => window.localStorage.getItem(AUTO_OPEN_INSPECTOR_KEY) !== "false");
   const [versionNote, setVersionNote] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">("saved");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -191,6 +204,7 @@ export function App() {
     setEditor(null);
     setInspectorOpen(false);
     setVersionsOpen(false);
+    setPaletteOpen(false);
   }, []);
 
   const refreshProjects = useCallback(async () => {
@@ -240,6 +254,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    window.localStorage.setItem(AUTO_OPEN_INSPECTOR_KEY, String(autoOpenInspector));
+  }, [autoOpenInspector]);
+
+  useEffect(() => {
     const followBrowserHistory = () => {
       const routeId = routedProjectId();
       if (routeId) {
@@ -261,6 +279,7 @@ export function App() {
       setEditor(null);
       setInspectorOpen(false);
       setVersionsOpen(false);
+      setPaletteOpen(false);
       void refreshProjects();
     };
     window.addEventListener("popstate", followBrowserHistory);
@@ -281,13 +300,24 @@ export function App() {
     hydrating.current = false;
   }, [scheduleAutosave]);
 
-  const addObject = () => {
+  const addObject = (preset: SemanticObjectPreset) => {
     if (!editor) return;
-    const id = `concept-${crypto.randomUUID()}`;
+    const id = `${preset.type}-${crypto.randomUUID()}`;
     const center = editor.getViewportPageBounds().center;
-    addToEditor(editor, { id, type: "concept", name: "New semantic object", transform: { x: center.x - 120, y: center.y - 70, width: 240, height: 140 }, properties: { status: "draft" }, intent: ["Describe the purpose of this object."], tags: ["concept"] });
+    addToEditor(editor, {
+      id,
+      type: preset.type,
+      name: `New ${preset.label}`,
+      transform: { x: center.x - preset.width / 2, y: center.y - preset.height / 2, width: preset.width, height: preset.height },
+      appearance: preset.appearance,
+      properties: structuredClone(preset.properties),
+      intent: [],
+      implementationNotes: [],
+      tags: [...preset.tags],
+    });
     editor.select(createShapeId(id));
-    setMessage("Semantic object added");
+    setPaletteOpen(false);
+    setMessage(`${preset.label} added`);
   };
 
   const exportJson = () => {
@@ -334,12 +364,13 @@ export function App() {
   const selectedConnection = editor && selectedShape?.type === "arrow" ? readConnection(editor, selectedShape) : null;
   const selectedConnectionData = selectedConnection?.meta[STUDIO_CONNECTION_META_KEY];
   const hasSemanticSelection = Boolean(selectedElement || selectedConnectionData);
+  const semanticPresets = activeProject ? semanticObjectsForMode(activeProject.mode) : [];
 
   useEffect(() => {
     setDraft(selectedElement ? elementToDraft(selectedElement) : null);
     setConnectionDraft(selectedConnectionData ? connectionToDraft(selectedConnectionData) : null);
-    setInspectorOpen(hasSemanticSelection);
-  }, [selectedShape?.id]);
+    setInspectorOpen(autoOpenInspector && hasSemanticSelection);
+  }, [selectedShape?.id, autoOpenInspector]);
 
   useEffect(() => {
     if (!inspectorOpen) return;
@@ -525,11 +556,11 @@ export function App() {
       <div className="brand-lockup"><button className="brand-mark" aria-label="Back to projects" onClick={leaveProject}>GW</button><div><p>{activeProject.mode.replace("-", " ")}</p><input className="project-name-input" aria-label="Project name" value={activeProject.name} onChange={(event) => renameProject(event.target.value)} /></div></div>
       <div className="header-actions">
         <span className={`save-status ${saveStatus}`}>{saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save error" : "Saved"}</span>
-        <button className="button secondary" onClick={() => setVersionsOpen((open) => !open)}>Versions ({activeProject.versions.length})</button>
-        <button className="button secondary" onClick={() => void saveVersion()}>Save Version</button>
+        <button className="button secondary versions-button" onClick={() => setVersionsOpen((open) => !open)}>Versions ({activeProject.versions.length})</button>
+        <button className="button secondary save-version-button" onClick={() => void saveVersion()}>Save Version</button>
         <input ref={fileInput} hidden type="file" accept="application/json,.json" aria-label="Import StudioDocument JSON" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importJson(file); event.target.value = ""; }} />
-        <button className="button secondary" onClick={() => fileInput.current?.click()}>Import JSON</button>
-        <button className="button primary" onClick={exportJson}>Export JSON</button>
+        <button className="button secondary import-button" onClick={() => fileInput.current?.click()}>Import JSON</button>
+        <button className="button primary export-button" onClick={exportJson}>Export JSON</button>
       </div>
     </header>
     <section className="canvas-stage" aria-label="Infinite design canvas">
@@ -579,11 +610,28 @@ export function App() {
         <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={connectionDraft.properties} onChange={(event) => updateConnectionDraft("properties", event.target.value)} /></label>
         <button className="button primary inspector-save" onClick={saveConnectionDetails}>Save connection context</button>
       </aside>}
-      <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
+      {paletteOpen && <aside className="semantic-palette" aria-label={`${activeProject.mode.replace("-", " ")} semantic objects`}>
+        <div className="palette-heading">
+          <div><p>Object library</p><h2>{activeProject.mode.replace("-", " ")} objects</h2></div>
+          <button type="button" className="icon-button" aria-label="Close object library" onClick={() => setPaletteOpen(false)}>×</button>
+        </div>
+        <label className="auto-inspector-toggle">
+          <span><strong>Open properties on selection</strong><small>Turn this off when arranging the canvas.</small></span>
+          <input type="checkbox" checked={autoOpenInspector} onChange={(event) => setAutoOpenInspector(event.target.checked)} />
+        </label>
+        <div className="preset-grid">{semanticPresets.map((preset) => <button
+          type="button"
+          className="preset-button"
+          key={preset.type}
+          title={preset.description}
+          onClick={() => addObject(preset)}
+        ><span aria-hidden="true">{preset.icon}</span><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</div>
+      </aside>}
       <div className="semantic-actions" aria-label="Semantic object tools">
         {selectedElement && <button
           type="button"
           className={`button secondary semantic-connection-trigger${connectionSourceId ? " active" : ""}`}
+          data-short={connectionSourceId ? connectionSourceId === selectedElement.id ? "×" : "→" : "→"}
           aria-label={connectionSourceId
             ? connectionSourceId === selectedElement.id ? "Cancel semantic connection" : "Connect to selected semantic object"
             : "Start semantic connection from selected object"}
@@ -594,14 +642,22 @@ export function App() {
         {hasSemanticSelection && <button
           type="button"
           className={`button secondary semantic-context-trigger${inspectorOpen ? " active" : ""}`}
+          data-short="✦"
           aria-label={inspectorOpen ? "Close attached semantic context" : "Edit attached semantic context"}
           aria-expanded={inspectorOpen}
           aria-pressed={inspectorOpen}
           onClick={() => setInspectorOpen((open) => !open)}
         ><span aria-hidden="true">✦</span> {inspectorOpen ? "Hide context" : "Edit context"}</button>}
-        <button className="button primary add-object" onClick={addObject}>＋ Semantic object</button>
+        <button
+          type="button"
+          className={`button primary add-object${paletteOpen ? " active" : ""}`}
+          data-short={paletteOpen ? "×" : "+"}
+          aria-expanded={paletteOpen}
+          aria-label={paletteOpen ? "Close semantic object library" : "Open semantic object library"}
+          onClick={() => setPaletteOpen((open) => !open)}
+        >{paletteOpen ? "× Close objects" : "＋ Add object"}</button>
       </div>
     </section>
-    <footer><span>StudioDocument v1</span><span>tldraw behind adapter</span><span>WS-001 · WS-002 · r{revision}</span></footer>
+    <footer aria-live="polite"><span><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}</span><span>{message}</span><span>StudioDocument v1 · r{revision}</span></footer>
   </main>;
 }
