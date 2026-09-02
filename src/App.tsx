@@ -74,7 +74,9 @@ export function App() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "document" }), [editor]);
+  // Selection lives in tldraw's session state, so listen to the whole store.
+  // A document-only listener misses select() calls made immediately after creating a shape.
+  useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "all" }), [editor]);
 
   const onMount = useCallback((instance: Editor) => {
     setEditor(instance);
@@ -195,15 +197,18 @@ export function App() {
         <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
-      {selectedElement && !inspectorOpen && <button
-        type="button"
-        className="button secondary semantic-context-trigger"
-        aria-label="Edit attached semantic context"
-        aria-expanded="false"
-        onClick={() => setInspectorOpen(true)}
-      ><span aria-hidden="true">✦</span> Edit context</button>}
       <div className="canvas-callout" aria-live="polite"><span className="pulse-dot" /><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}<i />{message}</div>
-      <button className="button primary add-object" onClick={addObject}>＋ Semantic object</button>
+      <div className="semantic-actions" aria-label="Semantic object tools">
+        {selectedElement && <button
+          type="button"
+          className={`button secondary semantic-context-trigger${inspectorOpen ? " active" : ""}`}
+          aria-label={inspectorOpen ? "Close attached semantic context" : "Edit attached semantic context"}
+          aria-expanded={inspectorOpen}
+          aria-pressed={inspectorOpen}
+          onClick={() => setInspectorOpen((open) => !open)}
+        ><span aria-hidden="true">✦</span> {inspectorOpen ? "Hide context" : "Edit context"}</button>}
+        <button className="button primary add-object" onClick={addObject}>＋ Semantic object</button>
+      </div>
     </section>
     <footer><span>StudioDocument v1</span><span>tldraw behind adapter</span><span>WS-001 · WS-002 · r{revision}</span></footer>
   </main>;
