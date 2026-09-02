@@ -5,7 +5,8 @@ import { STUDIO_CONNECTION_META_KEY, STUDIO_META_KEY, studioConnectionToTldrawCo
 import { parseStudioDocument, type StudioConnection, type StudioElement } from "./studio/schema/studio-document";
 import { ProjectDashboard } from "./features/projects/ProjectDashboard";
 import { IndexedDbProjectRepository, createProject, duplicateProject, snapshotProject, type ProjectVersion, type StudioProject } from "./features/projects/project-repository";
-import { semanticObjectsForMode, type SemanticObjectPreset } from "./studio/catalog/semantic-objects";
+import { findSemanticObjectPreset, propertyFieldsForPreset, semanticObjectsForMode, type SemanticObjectPreset, type SemanticPropertyField } from "./studio/catalog/semantic-objects";
+import { applyStarterTemplate, type StarterTemplate } from "./studio/templates/starter-templates";
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
@@ -166,6 +167,21 @@ function connectionToDraft(connection: StudioConnection): ConnectionDraft {
     tags: (connection.tags ?? []).join(", "),
     properties: JSON.stringify(connection.properties ?? {}, null, 2),
   };
+}
+
+function parseDraftProperties(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value || "{}");
+    return parsed && !Array.isArray(parsed) && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function propertyInputValue(value: unknown, field: SemanticPropertyField) {
+  if (field.type === "list") return Array.isArray(value) ? value.join(", ") : "";
+  if (field.type === "boolean") return Boolean(value);
+  return value === undefined || value === null ? "" : String(value);
 }
 
 export function App() {
@@ -365,6 +381,9 @@ export function App() {
   const selectedConnectionData = selectedConnection?.meta[STUDIO_CONNECTION_META_KEY];
   const hasSemanticSelection = Boolean(selectedElement || selectedConnectionData);
   const semanticPresets = activeProject ? semanticObjectsForMode(activeProject.mode) : [];
+  const selectedPreset = selectedElement && activeProject ? findSemanticObjectPreset(selectedElement.type, activeProject.mode) : undefined;
+  const selectedPropertyFields = selectedPreset ? propertyFieldsForPreset(selectedPreset) : [];
+  const selectedProperties = draft ? parseDraftProperties(draft.properties) : {};
 
   useEffect(() => {
     setDraft(selectedElement ? elementToDraft(selectedElement) : null);
@@ -383,6 +402,21 @@ export function App() {
 
   const updateDraft = (key: keyof InspectorDraft, value: string) => {
     setDraft((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const updateTypedProperty = (field: SemanticPropertyField, input: string | boolean) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const properties = parseDraftProperties(current.properties);
+      properties[field.key] = field.type === "boolean"
+        ? Boolean(input)
+        : field.type === "number"
+          ? Number(input)
+          : field.type === "list"
+            ? String(input).split(",").map((item) => item.trim()).filter(Boolean)
+            : input;
+      return { ...current, properties: JSON.stringify(properties, null, 2) };
+    });
   };
 
   const updateConnectionDraft = <K extends keyof ConnectionDraft>(key: K, value: ConnectionDraft[K]) => {
@@ -486,6 +520,16 @@ export function App() {
     window.history.pushState({ projectId: project.id }, "", `#project=${encodeURIComponent(project.id)}`);
   };
 
+  const createStarterProject = async (template: StarterTemplate) => {
+    const project = createProject(template.name, template.mode);
+    project.document = applyStarterTemplate(project.document, template);
+    project.name = project.document.name;
+    project.updatedAt = project.document.updatedAt;
+    await projectRepository.saveProject(project);
+    rememberProject(project);
+    window.history.pushState({ projectId: project.id }, "", `#project=${encodeURIComponent(project.id)}`);
+  };
+
   const openProject = (project: StudioProject) => {
     activateProject(project);
     window.history.pushState({ projectId: project.id }, "", `#project=${encodeURIComponent(project.id)}`);
@@ -546,6 +590,7 @@ export function App() {
     projects={projects}
     loading={projectsLoading}
     onCreate={(name, mode) => { void createNewProject(name, mode); }}
+    onCreateStarter={(template) => { void createStarterProject(template); }}
     onOpen={openProject}
     onDuplicate={(project) => { const copy = duplicateProject(project); void projectRepository.saveProject(copy).then(() => refreshProjects()); }}
     onDelete={(project) => { if (window.confirm(`Delete ${project.name}? This cannot be undone.`)) void projectRepository.deleteProject(project.id).then(() => refreshProjects()); }}
@@ -587,10 +632,28 @@ export function App() {
         </div>
         <label>Name<input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} /></label>
         <label>Semantic type<input value={draft.type} onChange={(event) => updateDraft("type", event.target.value)} /></label>
+        {selectedPreset && <fieldset className="typed-properties">
+          <legend>{selectedPreset.label} properties</legend>
+          <p>{selectedPreset.description}</p>
+          {selectedPropertyFields.map((field) => field.type === "boolean" ? <label className="typed-checkbox" key={field.key}>
+            <span>{field.label}</span>
+            <input type="checkbox" checked={Boolean(propertyInputValue(selectedProperties[field.key], field))} onChange={(event) => updateTypedProperty(field, event.target.checked)} />
+          </label> : <label key={field.key}>{field.label}
+            {field.type === "select" ? <select value={String(propertyInputValue(selectedProperties[field.key], field))} onChange={(event) => updateTypedProperty(field, event.target.value)}>
+              {field.options?.map((option) => <option key={option} value={option}>{option.replaceAll("-", " ")}</option>)}
+            </select> : field.type === "textarea" ? <textarea rows={3} value={String(propertyInputValue(selectedProperties[field.key], field))} onChange={(event) => updateTypedProperty(field, event.target.value)} />
+              : <input
+                type={field.type === "number" ? "number" : "text"}
+                value={String(propertyInputValue(selectedProperties[field.key], field))}
+                placeholder={field.type === "list" ? "Comma separated" : undefined}
+                onChange={(event) => updateTypedProperty(field, event.target.value)}
+              />}
+          </label>)}
+        </fieldset>}
         <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={draft.intent} onChange={(event) => updateDraft("intent", event.target.value)} /></label>
         <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={draft.implementationNotes} onChange={(event) => updateDraft("implementationNotes", event.target.value)} /></label>
         <label>Tags<span>Comma separated.</span><input value={draft.tags} onChange={(event) => updateDraft("tags", event.target.value)} /></label>
-        <label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={4} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label>
+        <details className="advanced-properties"><summary>Advanced JSON properties</summary><label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={6} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label></details>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
       {connectionDraft && selectedConnectionData && inspectorOpen && <aside className="semantic-inspector" aria-label="Semantic connection details">

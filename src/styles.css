@@ -57,6 +57,13 @@ button { font: inherit; }
 .semantic-inspector input, .semantic-inspector textarea, .semantic-inspector select { background: white; border: 1px solid #cbd4d0; border-radius: 8px; color: #17211f; font: inherit; font-weight: 500; outline: none; padding: 8px 9px; resize: vertical; }
 .semantic-inspector input:focus, .semantic-inspector textarea:focus, .semantic-inspector select:focus { border-color: #4b8074; box-shadow: 0 0 0 3px rgb(75 128 116 / 14%); }
 .semantic-inspector .code-field { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+.typed-properties { border: 1px solid #d5ded9; border-radius: 11px; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 11px; }
+.typed-properties legend { color: #173f38; font-size: 11px; font-weight: 800; padding: 0 5px; }
+.typed-properties > p { color: #78847f; font-size: 9px; line-height: 1.35; margin: -2px 0 2px; }
+.typed-properties .typed-checkbox { align-items: center; flex-direction: row; justify-content: space-between; }
+.typed-properties .typed-checkbox input { accent-color: #34745f; height: 20px; width: 20px; }
+.advanced-properties { border-top: 1px solid #d9e0dc; padding-top: 8px; }
+.advanced-properties summary { color: #52635d; cursor: pointer; font-size: 10px; font-weight: 750; margin-bottom: 9px; }
 .inspector-save { flex: 0 0 auto; width: 100%; }
 .semantic-context-trigger { background: rgb(255 255 255 / 94%); box-shadow: 0 8px 24px rgb(24 63 56 / 15%); color: #183f38; }
 .semantic-context-trigger span { color: #579744; margin-right: 3px; }
@@ -69,13 +76,19 @@ footer span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 footer span:nth-child(2) { text-align: center; }
 .project-dashboard { background: #eef1ed; height: 100dvh; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 24px clamp(18px, 4vw, 64px) 56px; }
 .dashboard-header { align-items: center; display: flex; justify-content: space-between; margin: 0 auto 42px; max-width: 1180px; }
-.new-project-section, .projects-section { margin: 0 auto 42px; max-width: 1180px; }
+.new-project-section, .starter-section, .projects-section { margin: 0 auto 42px; max-width: 1180px; }
 .eyebrow { color: #71807a; font-size: 10px; font-weight: 800; letter-spacing: .15em; margin: 0 0 5px; text-transform: uppercase; }
-.new-project-section h2, .projects-section h2 { font-size: clamp(22px, 3vw, 32px); letter-spacing: -.035em; margin: 0; }
+.new-project-section h2, .starter-section h2, .projects-section h2 { font-size: clamp(22px, 3vw, 32px); letter-spacing: -.035em; margin: 0; }
 .template-grid { display: grid; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 20px; }
 .template-card { align-items: flex-start; background: #fbfcf8; border: 1px solid #ccd4d0; border-radius: 14px; color: #244039; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: 12px; font-weight: 750; gap: 18px; min-height: 112px; padding: 16px; text-align: left; }
 .template-card:hover { border-color: #76a096; box-shadow: 0 10px 28px rgb(24 63 56 / 10%); transform: translateY(-1px); }
 .template-card span { color: #579744; font-size: 25px; }
+.starter-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 20px; }
+.starter-card { background: #173f38; border: 0; border-radius: 15px; color: white; cursor: pointer; display: flex; flex-direction: column; min-height: 145px; padding: 18px; text-align: left; }
+.starter-card:hover { box-shadow: 0 12px 30px rgb(24 63 56 / 18%); transform: translateY(-1px); }
+.starter-card > span { color: #d9ff7a; font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.starter-card strong { font-size: 20px; margin: auto 0 7px; }
+.starter-card small { color: #cbd9d4; font-size: 10px; line-height: 1.45; max-width: 48ch; }
 .section-heading { align-items: flex-end; display: flex; justify-content: space-between; }
 .section-heading > span { color: #71807a; font-size: 11px; }
 .project-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
@@ -115,6 +128,7 @@ footer span:nth-child(2) { text-align: center; }
   .dashboard-header { margin-bottom: 28px; }
   .template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .template-card:last-child { grid-column: 1 / -1; }
+  .starter-grid { grid-template-columns: 1fr; }
   .project-grid { grid-template-columns: 1fr; }
 }
 

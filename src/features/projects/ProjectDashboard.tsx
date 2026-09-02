@@ -1,10 +1,12 @@
 import type { StudioDocument } from "../../studio/schema/studio-document";
+import { starterTemplates, type StarterTemplate } from "../../studio/templates/starter-templates";
 import type { StudioProject } from "./project-repository";
 
 interface ProjectDashboardProps {
   projects: StudioProject[];
   loading: boolean;
   onCreate: (name: string, mode: StudioDocument["mode"]) => void;
+  onCreateStarter: (template: StarterTemplate) => void;
   onOpen: (project: StudioProject) => void;
   onDuplicate: (project: StudioProject) => void;
   onDelete: (project: StudioProject) => void;
@@ -18,7 +20,7 @@ const modes: Array<{ value: StudioDocument["mode"]; label: string }> = [
   { value: "architecture", label: "Architecture" },
 ];
 
-export function ProjectDashboard({ projects, loading, onCreate, onOpen, onDuplicate, onDelete }: ProjectDashboardProps) {
+export function ProjectDashboard({ projects, loading, onCreate, onCreateStarter, onOpen, onDuplicate, onDelete }: ProjectDashboardProps) {
   const create = (mode: StudioDocument["mode"]) => onCreate(`Untitled ${modes.find((item) => item.value === mode)?.label ?? "design"}`, mode);
   return <main className="project-dashboard">
     <header className="dashboard-header">
@@ -29,6 +31,14 @@ export function ProjectDashboard({ projects, loading, onCreate, onOpen, onDuplic
       <div className="template-grid">{modes.map((mode) => <button key={mode.value} className="template-card" onClick={() => create(mode.value)}>
         <span>{mode.value === "graph" ? "→" : mode.value === "board-game" ? "▦" : mode.value === "ui" ? "▤" : mode.value === "architecture" ? "◇" : "+"}</span>
         {mode.label}
+      </button>)}</div>
+    </section>
+    <section className="starter-section" aria-labelledby="starter-heading">
+      <div><p className="eyebrow">Prebuilt examples</p><h2 id="starter-heading">Starter canvases</h2></div>
+      <div className="starter-grid">{starterTemplates.map((template) => <button key={template.id} className="starter-card" onClick={() => onCreateStarter(template)}>
+        <span>{template.complexity}</span>
+        <strong>{template.shortName}</strong>
+        <small>{template.description}</small>
       </button>)}</div>
     </section>
     <section className="projects-section" aria-labelledby="projects-heading">

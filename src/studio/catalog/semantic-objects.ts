@@ -12,6 +12,53 @@ export interface SemanticObjectPreset {
   tags: string[];
 }
 
+export type SemanticPropertyFieldType = "text" | "textarea" | "number" | "boolean" | "list" | "select";
+
+export interface SemanticPropertyField {
+  key: string;
+  label: string;
+  type: SemanticPropertyFieldType;
+  options?: string[];
+}
+
+type PresetShape = "cloud" | "rectangle" | "ellipse" | "diamond" | "hexagon" | "oval";
+type PresetColor = "grey" | "violet" | "blue" | "yellow" | "orange" | "green" | "light-green" | "red";
+
+const selectOptions: Record<string, string[]> = {
+  visibility: ["public", "owner", "private", "hidden"],
+  status: ["draft", "ready", "active", "complete", "blocked"],
+  state: ["default", "available", "in-play", "spent", "removed"],
+  device: ["responsive", "mobile", "desktop", "tablet"],
+  inputType: ["text", "number", "choice", "date", "file"],
+  delivery: ["at-least-once", "at-most-once", "exactly-once"],
+  priority: ["low", "normal", "high", "critical"],
+};
+
+const textareaKeys = new Set(["rules", "condition", "approvalCriteria", "responsibility", "drawRule", "purpose"]);
+
+function fieldLabel(key: string) {
+  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export function propertyFieldsForPreset(preset: SemanticObjectPreset): SemanticPropertyField[] {
+  return Object.entries(preset.properties).map(([key, value]) => ({
+    key,
+    label: fieldLabel(key),
+    type: selectOptions[key]
+      ? "select"
+      : Array.isArray(value)
+        ? "list"
+        : typeof value === "boolean"
+          ? "boolean"
+          : typeof value === "number"
+            ? "number"
+            : textareaKeys.has(key)
+              ? "textarea"
+              : "text",
+    options: selectOptions[key],
+  }));
+}
+
 const preset = (
   type: string,
   label: string,
@@ -20,8 +67,8 @@ const preset = (
   properties: Record<string, unknown> = {},
   width = 240,
   height = 140,
-  shape = "rectangle",
-  color = "blue",
+  shape: PresetShape = "rectangle",
+  color: PresetColor = "blue",
 ): SemanticObjectPreset => ({
   type,
   label,
@@ -43,13 +90,13 @@ const generic = [
 const catalogs: Record<StudioDocument["mode"], SemanticObjectPreset[]> = {
   blank: generic,
   graph: [
-    preset("input", "Input", "⇥", "Starting data or trigger", { dataType: "", required: true }, 190, 110, "pill", "green"),
+    preset("input", "Input", "⇥", "Starting data or trigger", { dataType: "", required: true }, 190, 110, "oval", "green"),
     preset("agent", "Agent", "◆", "AI or human reasoning step", { role: "", model: "", inputs: [], outputs: [], tools: [], retryCount: 0 }, 250, 150, "rectangle", "violet"),
     preset("tool", "Tool", "⌁", "External capability used by an agent", { toolName: "", operation: "" }, 210, 120, "hexagon", "orange"),
     preset("transform", "Transform", "↻", "Deterministic data transformation", { inputSchema: "", outputSchema: "" }, 230, 130, "rectangle", "blue"),
     preset("gate", "Gate", "◇", "Conditional routing decision", { condition: "", truePath: "", falsePath: "" }, 180, 180, "diamond", "yellow"),
     preset("human-checkpoint", "Human checkpoint", "◉", "Explicit review or approval", { reviewer: "", approvalCriteria: "" }, 250, 140, "rectangle", "red"),
-    preset("output", "Output", "⇤", "Result returned by the graph", { dataType: "", destination: "" }, 190, 110, "pill", "green"),
+    preset("output", "Output", "⇤", "Result returned by the graph", { dataType: "", destination: "" }, 190, 110, "oval", "green"),
     ...generic,
   ],
   "board-game": [
@@ -66,7 +113,7 @@ const catalogs: Record<StudioDocument["mode"], SemanticObjectPreset[]> = {
   ui: [
     preset("screen", "Screen", "▣", "Application screen or route", { route: "", device: "responsive" }, 360, 280, "rectangle", "grey"),
     preset("panel", "Panel", "▤", "Layout section or information panel", { purpose: "" }, 300, 200),
-    preset("button", "Button", "▰", "Interactive action", { action: "", state: "default" }, 180, 80, "pill", "green"),
+    preset("button", "Button", "▰", "Interactive action", { action: "", state: "default" }, 180, 80, "oval", "green"),
     preset("input-field", "Input", "⌨", "User input control", { inputType: "text", required: false }, 240, 80, "rectangle", "blue"),
     preset("navigation", "Navigation", "☰", "Navigation region", { destinations: [] }, 300, 100, "rectangle", "violet"),
     preset("modal", "Modal", "▣", "Temporary focused interface", { trigger: "", dismissal: "" }, 300, 220, "rectangle", "orange"),
@@ -75,7 +122,7 @@ const catalogs: Record<StudioDocument["mode"], SemanticObjectPreset[]> = {
   architecture: [
     preset("service", "Service", "⬡", "Deployable software service", { responsibility: "", runtime: "", repository: "" }, 260, 150, "hexagon", "blue"),
     preset("database", "Database", "▱", "Persistent data store", { technology: "", data: "", retention: "" }, 220, 150, "rectangle", "violet"),
-    preset("api", "API", "⇄", "System interface or contract", { protocol: "HTTP", endpoint: "", authentication: "" }, 230, 120, "pill", "green"),
+    preset("api", "API", "⇄", "System interface or contract", { protocol: "HTTP", endpoint: "", authentication: "" }, 230, 120, "oval", "green"),
     preset("queue", "Queue", "≋", "Asynchronous message channel", { topic: "", delivery: "at-least-once" }, 240, 110, "rectangle", "orange"),
     preset("external-system", "External system", "◎", "Dependency outside this design", { owner: "", interface: "" }, 260, 150, "rectangle", "grey"),
     preset("user", "Actor", "◉", "Person or system actor", { role: "", permissions: [] }, 180, 130, "ellipse", "yellow"),
@@ -85,4 +132,12 @@ const catalogs: Record<StudioDocument["mode"], SemanticObjectPreset[]> = {
 
 export function semanticObjectsForMode(mode: StudioDocument["mode"]) {
   return catalogs[mode];
+}
+
+export function findSemanticObjectPreset(type: string, preferredMode?: StudioDocument["mode"]) {
+  const preferred = preferredMode ? catalogs[preferredMode].find((item) => item.type === type) : undefined;
+  if (preferred) return preferred;
+
+  const matches = Object.values(catalogs).flat().filter((item) => item.type === type);
+  return matches.length === 1 ? matches[0] : undefined;
 }
