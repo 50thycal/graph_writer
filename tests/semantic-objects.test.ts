@@ -40,6 +40,7 @@ describe("semantic object catalog", () => {
       const base = createStudioDocument({ id: `document-${template.id}`, name: template.name, mode: template.mode });
       const document = parseStudioDocument(applyStarterTemplate(base, template));
       expect(document.elements.length).toBeGreaterThanOrEqual(7);
+      expect(document.connections.length).toBeGreaterThan(0);
       expect(document.metadata.starterTemplate).toBe(template.id);
       for (const connection of document.connections) {
         expect(document.elements.some((item) => item.id === connection.sourceElementId)).toBe(true);

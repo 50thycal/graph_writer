@@ -45,7 +45,9 @@ export function HandoffPanel({ bundle, error, onClose }: HandoffPanelProps) {
       return;
     }
     try {
-      await shareNavigator.share?.({ title: `${bundle.document.name} design handoff`, text: bundle.markdown, files });
+      // Supplying both `text` and a Markdown file makes iOS create a redundant
+      // text.txt attachment. The brief already travels as the .md file.
+      await shareNavigator.share?.({ title: `${bundle.document.name} design handoff`, files });
       setFeedback("shared");
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === "AbortError") return;

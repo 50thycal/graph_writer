@@ -12,6 +12,7 @@ import { createHandoffBundle, type HandoffBundle } from "./features/export/hando
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
+const TOP_ALIGNED_CONTAINER_TYPES = new Set(["board", "container", "screen", "tabletop-panel"]);
 
 function routedProjectId() {
   const match = window.location.hash.match(/^#project=(.+)$/);
@@ -26,6 +27,7 @@ function routedProjectId() {
 function addToEditor(editor: Editor, element: StudioElement) {
   const record = studioElementToTldrawShape(element);
   const appearance = element.appearance ?? {};
+  const isContainer = TOP_ALIGNED_CONTAINER_TYPES.has(element.type);
   editor.createShape({
     id: createShapeId(element.id), type: "geo", x: record.x, y: record.y, rotation: record.rotation,
     isLocked: element.locked,
@@ -36,6 +38,8 @@ function addToEditor(editor: Editor, element: StudioElement) {
       fill: (appearance.fill ?? "solid") as TLGeoShape["props"]["fill"],
       color: (appearance.color ?? "blue") as TLGeoShape["props"]["color"],
       size: "m",
+      align: isContainer ? "start" : "middle",
+      verticalAlign: isContainer ? "start" : "middle",
       richText: toRichText(record.props.label),
     },
     meta: { [STUDIO_META_KEY]: JSON.parse(JSON.stringify(record.meta[STUDIO_META_KEY])) },

@@ -31,6 +31,12 @@ function tableCell(value: string) {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
+function propertySummary(properties: Record<string, unknown>) {
+  return Object.entries(properties)
+    .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
+    .join("; ");
+}
+
 function formatNotes(notes?: string[]) {
   return notes?.map((note) => `- ${note}`).join("\n") ?? "";
 }
@@ -79,6 +85,17 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     if (connection.intent?.length) lines.push("**Intent**", "", formatNotes(connection.intent), "");
     if (connection.implementationNotes?.length) lines.push("**Implementation notes**", "", formatNotes(connection.implementationNotes), "");
   }
+
+  const elementsWithProperties = document.elements.filter((element) => Object.keys(element.properties ?? {}).length);
+  lines.push("## Semantic Properties", "");
+  if (!elementsWithProperties.length) lines.push("No structured properties are defined.", "");
+  else lines.push(
+    "| Object | Type | Properties |",
+    "|---|---|---|",
+    ...elementsWithProperties.map((element) =>
+      `| ${tableCell(displayName(element))} | ${tableCell(element.type)} | ${tableCell(propertySummary(element.properties ?? {}))} |`),
+    "",
+  );
 
   lines.push(
     "## Spatial Layout",

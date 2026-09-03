@@ -21,6 +21,8 @@ describe("handoff export", () => {
     const markdown = generateHandoffMarkdown(document, { versionLabel: "Draft after v2" });
     expect(markdown).toContain("**Project:** Planning Flow");
     expect(markdown).toContain("### Planner (agent)");
+    expect(markdown).toContain("## Semantic Properties");
+    expect(markdown).toContain("| Request | input | required: true |");
     expect(markdown).toContain("| Request | input | 10 | 20 | 180 | 90 |");
     expect(markdown).toContain("Request → Planner (flow) — analyze");
     expect(markdown).toContain("Keep direction explicit.");

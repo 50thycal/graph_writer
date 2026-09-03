@@ -54,7 +54,11 @@ export const starterTemplates: StarterTemplate[] = [
     complexity: "simple",
     mode: "board-game",
     elements: colorMatchElements,
-    connections: [],
+    connections: [
+      { id: "color-draw-to-hand", sourceElementId: "color-draw", targetElementId: "color-player-bottom", type: "flow", label: "draw card", properties: { action: "draw", quantity: 1 }, intent: ["A draw transfers a hidden card into the active player's hand."], implementationNotes: [], tags: ["card-flow"] },
+      { id: "color-hand-to-discard", sourceElementId: "color-player-bottom", targetElementId: "color-discard", type: "flow", label: "play card", properties: { action: "play", matchBy: ["color", "value"] }, intent: ["A legal play moves a selected card to the visible discard pile."], implementationNotes: [], tags: ["card-flow"] },
+      { id: "color-discard-to-draw", sourceElementId: "color-discard", targetElementId: "color-draw", type: "loop", label: "recycle", properties: { preserveTopCard: true }, intent: ["When the draw pile is empty, shuffle the discard pile except its top card into a new draw pile."], implementationNotes: [], tags: ["deck-lifecycle"] },
+    ],
   },
   {
     id: "route-builder-table",
