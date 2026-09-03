@@ -7,6 +7,8 @@ import { ProjectDashboard } from "./features/projects/ProjectDashboard";
 import { IndexedDbProjectRepository, createProject, duplicateProject, snapshotProject, type ProjectVersion, type StudioProject } from "./features/projects/project-repository";
 import { findSemanticObjectPreset, propertyFieldsForPreset, semanticObjectsForMode, type SemanticObjectPreset, type SemanticPropertyField } from "./studio/catalog/semantic-objects";
 import { applyStarterTemplate, type StarterTemplate } from "./studio/templates/starter-templates";
+import { HandoffPanel } from "./features/export/HandoffPanel";
+import { createHandoffBundle, type HandoffBundle } from "./features/export/handoff";
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
@@ -197,6 +199,9 @@ export function App() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [handoffBundle, setHandoffBundle] = useState<HandoffBundle | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
   const [autoOpenInspector, setAutoOpenInspector] = useState(() => window.localStorage.getItem(AUTO_OPEN_INSPECTOR_KEY) !== "false");
   const [versionNote, setVersionNote] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">("saved");
@@ -221,6 +226,9 @@ export function App() {
     setInspectorOpen(false);
     setVersionsOpen(false);
     setPaletteOpen(false);
+    setHandoffOpen(false);
+    setHandoffBundle(null);
+    setHandoffError(null);
   }, []);
 
   const refreshProjects = useCallback(async () => {
@@ -296,6 +304,9 @@ export function App() {
       setInspectorOpen(false);
       setVersionsOpen(false);
       setPaletteOpen(false);
+      setHandoffOpen(false);
+      setHandoffBundle(null);
+      setHandoffError(null);
       void refreshProjects();
     };
     window.addEventListener("popstate", followBrowserHistory);
@@ -336,20 +347,33 @@ export function App() {
     setMessage(`${preset.label} added`);
   };
 
-  const exportJson = () => {
+  const prepareHandoff = async () => {
     if (!editor) return;
-    const connections = readConnections(editor);
-    const arrowCount = editor.getCurrentPageShapes().filter((shape) => shape.type === "arrow").length;
     const current = activeProjectRef.current;
     if (!current) return;
-    const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), current.document, connections));
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
-    const link = window.document.createElement("a");
-    link.href = url; link.download = "studio-document.json"; link.click(); URL.revokeObjectURL(url);
-    const looseArrowCount = arrowCount - connections.length;
-    setMessage(looseArrowCount > 0
-      ? `Exported ${connections.length} semantic connection${connections.length === 1 ? "" : "s"}; skipped ${looseArrowCount} loose arrow${looseArrowCount === 1 ? "" : "s"}`
-      : `Exported ${connections.length} semantic connection${connections.length === 1 ? "" : "s"}`);
+
+    setVersionsOpen(false);
+    setPaletteOpen(false);
+    setInspectorOpen(false);
+    setHandoffBundle(null);
+    setHandoffError(null);
+    setHandoffOpen(true);
+
+    try {
+      const shapeIds = Array.from(editor.getCurrentPageShapeIds());
+      if (!shapeIds.length) throw new Error("Add at least one object or annotation before creating a handoff.");
+      const document = parseStudioDocument(tldrawShapesToStudioDocument(readShapes(editor), current.document, readConnections(editor)));
+      await editor.fonts.loadRequiredFontsForCurrentPage(editor.options.maxFontsToLoadBeforeRender);
+      const image = await editor.toImage(shapeIds, { format: "png", background: true, darkMode: false, padding: 48, pixelRatio: 2 });
+      const latestVersion = current.versions.at(-1)?.number;
+      const versionLabel = latestVersion ? `Draft after v${latestVersion}` : "Draft";
+      setHandoffBundle(createHandoffBundle(document, image, { versionLabel }));
+      setMessage("Design handoff ready");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Could not create the design handoff.";
+      setHandoffError(reason);
+      setMessage(reason);
+    }
   };
 
   const importJson = async (file: File) => {
@@ -422,6 +446,8 @@ export function App() {
   const updateConnectionDraft = <K extends keyof ConnectionDraft>(key: K, value: ConnectionDraft[K]) => {
     setConnectionDraft((current) => current ? { ...current, [key]: value } : current);
   };
+
+  const closeHandoff = useCallback(() => setHandoffOpen(false), []);
 
   const saveSemanticDetails = () => {
     if (!editor || !selectedShape || selectedShape.type !== "geo" || !selectedElement || !draft) return;
@@ -601,11 +627,11 @@ export function App() {
       <div className="brand-lockup"><button className="brand-mark" aria-label="Back to projects" onClick={leaveProject}>GW</button><div><p>{activeProject.mode.replace("-", " ")}</p><input className="project-name-input" aria-label="Project name" value={activeProject.name} onChange={(event) => renameProject(event.target.value)} /></div></div>
       <div className="header-actions">
         <span className={`save-status ${saveStatus}`}>{saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save error" : "Saved"}</span>
-        <button className="button secondary versions-button" onClick={() => setVersionsOpen((open) => !open)}>Versions ({activeProject.versions.length})</button>
+        <button className="button secondary versions-button" onClick={() => { setHandoffOpen(false); setVersionsOpen((open) => !open); }}>Versions ({activeProject.versions.length})</button>
         <button className="button secondary save-version-button" onClick={() => void saveVersion()}>Save Version</button>
         <input ref={fileInput} hidden type="file" accept="application/json,.json" aria-label="Import StudioDocument JSON" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importJson(file); event.target.value = ""; }} />
         <button className="button secondary import-button" onClick={() => fileInput.current?.click()}>Import JSON</button>
-        <button className="button primary export-button" onClick={exportJson}>Export JSON</button>
+        <button className="button primary export-button" onClick={() => void prepareHandoff()}>Handoff</button>
       </div>
     </header>
     <section className="canvas-stage" aria-label="Infinite design canvas">
@@ -619,6 +645,7 @@ export function App() {
           <button className="button secondary" onClick={() => void restoreVersion(version)}>Restore</button>
         </article>)}</div>
       </aside> : null}
+      {handoffOpen ? <HandoffPanel bundle={handoffBundle} error={handoffError} onClose={closeHandoff} /> : null}
       {draft && selectedElement && inspectorOpen && <aside className="semantic-inspector" aria-label="Semantic object details">
         <div className="inspector-heading">
           <div><p>Attached context</p><h2>Semantic details</h2></div>
