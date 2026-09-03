@@ -25,4 +25,13 @@ describe("StudioDocument", () => {
       connections: [{ id: "bad", sourceElementId: "agent-1", targetElementId: "missing", type: "flow" }],
     })).toThrow(/Missing target element/);
   });
+  it("keeps embedded reference images self-contained and validates their asset link", () => {
+    const document = createStudioDocument({
+      id: "reference-doc", name: "Reference", mode: "ui",
+      assets: [{ id: "asset-1", type: "image", name: "screen.png", mimeType: "image/png", src: "data:image/png;base64,AA==", width: 1200, height: 800 }],
+      elements: [{ id: "reference-1", type: "reference-image", name: "Existing screen", transform: { x: 0, y: 0, width: 600, height: 400 }, content: { assetId: "asset-1" }, locked: true }],
+    });
+    expect(parseStudioDocument(JSON.parse(JSON.stringify(document))).assets[0].name).toBe("screen.png");
+    expect(() => parseStudioDocument({ ...document, assets: [] })).toThrow(/Missing reference image asset/);
+  });
 });

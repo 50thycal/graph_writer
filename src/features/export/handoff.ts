@@ -97,6 +97,18 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     "",
   );
 
+  const referenceImages = document.elements.filter((element) => element.type === "reference-image");
+  if (referenceImages.length) {
+    const assetById = new Map(document.assets.map((asset) => [asset.id, asset]));
+    lines.push("## Visual References", "");
+    for (const element of referenceImages) {
+      const assetId = typeof element.content?.assetId === "string" ? element.content.assetId : "";
+      const asset = assetById.get(assetId);
+      lines.push(`- ${displayName(element)} — ${element.locked ? "locked background" : "movable reference"}${asset ? `; source ${asset.name} (${Math.round(asset.width)}×${Math.round(asset.height)})` : ""}`);
+    }
+    lines.push("");
+  }
+
   lines.push(
     "## Spatial Layout",
     "",

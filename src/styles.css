@@ -33,6 +33,13 @@ button { font: inherit; }
 .auto-inspector-toggle strong { font-size: 11px; }
 .auto-inspector-toggle small { color: #74817c; font-size: 9px; }
 .auto-inspector-toggle input { accent-color: #34745f; height: 20px; width: 20px; }
+.reference-import { background: #f2f5f2; border: 1px solid #d5ded9; border-radius: 11px; display: flex; flex-direction: column; gap: 9px; padding: 11px; }
+.reference-import > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.reference-import strong { color: #244039; font-size: 11px; }
+.reference-import small { color: #74817c; font-size: 9px; line-height: 1.35; }
+.reference-import-buttons { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.reference-import button { background: white; border: 1px solid #c7d2cd; border-radius: 8px; color: #31554d; cursor: pointer; font-size: 9px; font-weight: 750; min-height: 34px; padding: 6px 8px; }
+.reference-import .unlock-references { background: #e7f0ea; border-color: #91afa3; width: 100%; }
 .preset-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .preset-button { align-items: center; background: white; border: 1px solid #d6ddda; border-radius: 11px; color: #244039; cursor: pointer; display: grid; gap: 2px 9px; grid-template-columns: 30px 1fr; min-height: 66px; padding: 9px; text-align: left; }
 .preset-button:hover { border-color: #6d9e91; background: #f7faf7; }
@@ -83,6 +90,7 @@ button { font: inherit; }
 .advanced-properties { border-top: 1px solid #d9e0dc; padding-top: 8px; }
 .advanced-properties summary { color: #52635d; cursor: pointer; font-size: 10px; font-weight: 750; margin-bottom: 9px; }
 .inspector-save { flex: 0 0 auto; width: 100%; }
+.reference-lock-toggle { flex: 0 0 auto; width: 100%; }
 .semantic-context-trigger { background: rgb(255 255 255 / 94%); box-shadow: 0 8px 24px rgb(24 63 56 / 15%); color: #183f38; }
 .semantic-context-trigger span { color: #579744; margin-right: 3px; }
 .semantic-context-trigger.active { background: #e4eee9; border-color: #8ba79f; }

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createShapeId, getArrowBindings, type Editor, type TLArrowShape, type TLGeoShape, Tldraw } from "tldraw";
-import { toRichText } from "@tldraw/tlschema";
+import { createShapeId, getArrowBindings, type Editor, type TLArrowShape, type TLGeoShape, type TLImageShape, Tldraw } from "tldraw";
+import { AssetRecordType, toRichText } from "@tldraw/tlschema";
 import { STUDIO_CONNECTION_META_KEY, STUDIO_META_KEY, studioConnectionToTldrawConnection, studioElementToTldrawShape, tldrawShapesToStudioDocument, type TldrawConnectionRecord, type TldrawShapeRecord } from "./canvas/adapter/studio-tldraw-adapter";
-import { parseStudioDocument, type StudioConnection, type StudioElement } from "./studio/schema/studio-document";
+import { parseStudioDocument, type StudioAsset, type StudioConnection, type StudioElement } from "./studio/schema/studio-document";
 import { ProjectDashboard } from "./features/projects/ProjectDashboard";
 import { IndexedDbProjectRepository, createProject, duplicateProject, snapshotProject, type ProjectVersion, type StudioProject } from "./features/projects/project-repository";
 import { findSemanticObjectPreset, propertyFieldsForPreset, semanticObjectsForMode, type SemanticObjectPreset, type SemanticPropertyField } from "./studio/catalog/semantic-objects";
 import { applyStarterTemplate, type StarterTemplate } from "./studio/templates/starter-templates";
 import { HandoffPanel } from "./features/export/HandoffPanel";
 import { createHandoffBundle, type HandoffBundle } from "./features/export/handoff";
+import { createReferenceRecords, readReferenceImage, REFERENCE_IMAGE_TYPES } from "./features/import/reference-image";
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
@@ -24,8 +25,43 @@ function routedProjectId() {
   }
 }
 
-function addToEditor(editor: Editor, element: StudioElement) {
+function addToEditor(editor: Editor, element: StudioElement, assets: StudioAsset[] = []) {
   const record = studioElementToTldrawShape(element);
+  if (record.type === "image") {
+    const studioAsset = assets.find((asset) => asset.id === element.content?.assetId);
+    if (!studioAsset) throw new Error(`Could not find the image data for ${element.name ?? element.id}.`);
+    const assetId = AssetRecordType.createId(studioAsset.id);
+    if (!editor.getAsset(assetId)) {
+      editor.createAssets([{
+        id: assetId,
+        typeName: "asset",
+        type: "image",
+        props: {
+          name: studioAsset.name,
+          src: studioAsset.src,
+          w: studioAsset.width,
+          h: studioAsset.height,
+          mimeType: studioAsset.mimeType,
+          fileSize: studioAsset.fileSize,
+          isAnimated: studioAsset.mimeType === "image/gif",
+        },
+        meta: {},
+      }]);
+    }
+    const shapeId = createShapeId(element.id);
+    editor.createShape({
+      id: shapeId,
+      type: "image",
+      x: record.x,
+      y: record.y,
+      rotation: record.rotation,
+      isLocked: element.locked,
+      props: { assetId, w: record.props.w, h: record.props.h },
+      meta: { [STUDIO_META_KEY]: JSON.parse(JSON.stringify(record.meta[STUDIO_META_KEY])) },
+    });
+    if (element.locked || element.transform.zIndex === -1) editor.sendToBack([shapeId]);
+    return;
+  }
   const appearance = element.appearance ?? {};
   const isContainer = TOP_ALIGNED_CONTAINER_TYPES.has(element.type);
   editor.createShape({
@@ -48,21 +84,26 @@ function addToEditor(editor: Editor, element: StudioElement) {
 
 function readShapes(editor: Editor): TldrawShapeRecord[] {
   return editor.getCurrentPageShapes()
-    .filter((shape) => shape.type === "geo" && shape.meta[STUDIO_META_KEY])
-    .map((shape) => ({
-      id: shape.id, type: "geo" as const, x: shape.x, y: shape.y, rotation: shape.rotation,
-      props: {
-        w: (shape.props as { w: number }).w,
-        h: (shape.props as { h: number }).h,
-        label: editor.getShapeUtil(shape).getText(shape)?.trim() || (shape.meta[STUDIO_META_KEY] as StudioElement).name || "Semantic object",
-      },
-      meta: {
-        [STUDIO_META_KEY]: {
-          ...(shape.meta[STUDIO_META_KEY] as StudioElement),
-          name: editor.getShapeUtil(shape).getText(shape)?.trim() || (shape.meta[STUDIO_META_KEY] as StudioElement).name,
+    .filter((shape): shape is TLGeoShape | TLImageShape => (shape.type === "geo" || shape.type === "image") && Boolean(shape.meta[STUDIO_META_KEY]))
+    .map((shape) => {
+      const semantic = shape.meta[STUDIO_META_KEY] as StudioElement;
+      const visibleLabel = shape.type === "geo" ? editor.getShapeUtil(shape).getText(shape)?.trim() : undefined;
+      return {
+        id: shape.id, type: shape.type, x: shape.x, y: shape.y, rotation: shape.rotation,
+        props: {
+          w: shape.props.w,
+          h: shape.props.h,
+          label: visibleLabel || semantic.name || "Semantic object",
         },
-      },
-    }));
+        meta: {
+          [STUDIO_META_KEY]: {
+            ...semantic,
+            name: visibleLabel || semantic.name,
+            locked: shape.isLocked,
+          },
+        },
+      };
+    });
 }
 
 function readConnection(editor: Editor, arrow: TLArrowShape): TldrawConnectionRecord | null {
@@ -210,6 +251,8 @@ export function App() {
   const [versionNote, setVersionNote] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">("saved");
   const fileInput = useRef<HTMLInputElement>(null);
+  const referenceImageInput = useRef<HTMLInputElement>(null);
+  const referenceImportLocked = useRef(false);
   const activeProjectRef = useRef<StudioProject | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const stopAutosave = useRef<(() => void) | undefined>(undefined);
@@ -325,7 +368,7 @@ export function App() {
     stopAutosave.current = instance.store.listen(() => scheduleAutosave(instance), { scope: "document" });
     hydrating.current = true;
     if (instance.getCurrentPageShapes().length) instance.deleteShapes(Array.from(instance.getCurrentPageShapeIds()));
-    project.document.elements.forEach((element) => addToEditor(instance, element));
+    project.document.elements.forEach((element) => addToEditor(instance, element, project.document.assets));
     project.document.connections.forEach((connection) => addConnectionToEditor(instance, connection));
     if (project.document.elements.length) instance.zoomToFit({ animation: { duration: 240 } });
     hydrating.current = false;
@@ -388,7 +431,7 @@ export function App() {
       if (!current) return;
       hydrating.current = true;
       editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
-      document.elements.forEach((element) => addToEditor(editor, element));
+      document.elements.forEach((element) => addToEditor(editor, element, document.assets));
       document.connections.forEach((connection) => addConnectionToEditor(editor, connection));
       editor.zoomToFit({ animation: { duration: 240 } });
       hydrating.current = false;
@@ -409,6 +452,10 @@ export function App() {
   const selectedConnectionData = selectedConnection?.meta[STUDIO_CONNECTION_META_KEY];
   const hasSemanticSelection = Boolean(selectedElement || selectedConnectionData);
   const semanticPresets = activeProject ? semanticObjectsForMode(activeProject.mode) : [];
+  const liveReferenceElements = editor
+    ? readShapes(editor).map((shape) => shape.meta[STUDIO_META_KEY]).filter((element) => element.type === "reference-image")
+    : activeProject?.document.elements.filter((element) => element.type === "reference-image") ?? [];
+  const lockedReferenceCount = liveReferenceElements.filter((element) => element.locked).length;
   const selectedPreset = selectedElement && activeProject ? findSemanticObjectPreset(selectedElement.type, activeProject.mode) : undefined;
   const selectedPropertyFields = selectedPreset ? propertyFieldsForPreset(selectedPreset) : [];
   const selectedProperties = draft ? parseDraftProperties(draft.properties) : {};
@@ -454,7 +501,7 @@ export function App() {
   const closeHandoff = useCallback(() => setHandoffOpen(false), []);
 
   const saveSemanticDetails = () => {
-    if (!editor || !selectedShape || selectedShape.type !== "geo" || !selectedElement || !draft) return;
+    if (!editor || !selectedShape || (selectedShape.type !== "geo" && selectedShape.type !== "image") || !selectedElement || !draft) return;
     try {
       const properties = JSON.parse(draft.properties || "{}");
       if (!properties || Array.isArray(properties) || typeof properties !== "object") {
@@ -469,12 +516,20 @@ export function App() {
         tags: draft.tags.split(",").map((value) => value.trim()).filter(Boolean),
         properties,
       };
-      editor.updateShape({
-        id: selectedShape.id,
-        type: "geo",
-        props: { richText: toRichText(updated.name ?? updated.type) },
-        meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
-      });
+      if (selectedShape.type === "geo") {
+        editor.updateShape({
+          id: selectedShape.id,
+          type: "geo",
+          props: { richText: toRichText(updated.name ?? updated.type) },
+          meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+        });
+      } else {
+        editor.updateShape({
+          id: selectedShape.id,
+          type: "image",
+          meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+        });
+      }
       setMessage("Semantic details saved");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save semantic details");
@@ -543,6 +598,89 @@ export function App() {
     setMessage("Semantic connection created");
   };
 
+  const chooseReferenceImage = (locked: boolean) => {
+    referenceImportLocked.current = locked;
+    referenceImageInput.current?.click();
+  };
+
+  const importReferenceImage = async (file: File) => {
+    if (!editor) return;
+    const current = activeProjectRef.current;
+    if (!current) return;
+    try {
+      const image = await readReferenceImage(file);
+      const bounds = editor.getViewportPageBounds();
+      const records = createReferenceRecords({
+        file,
+        src: image.src,
+        imageWidth: image.width,
+        imageHeight: image.height,
+        canvasX: bounds.x + bounds.w * 0.08,
+        canvasY: bounds.y + bounds.h * 0.08,
+        canvasWidth: bounds.w * 0.84,
+        canvasHeight: bounds.h * 0.84,
+        locked: referenceImportLocked.current,
+      });
+      const updatedAt = new Date().toISOString();
+      const document = parseStudioDocument({
+        ...current.document,
+        updatedAt,
+        assets: [...current.document.assets, records.asset],
+        elements: [...current.document.elements, records.element],
+      });
+      const updatedProject = { ...current, updatedAt, document };
+      hydrating.current = true;
+      try {
+        addToEditor(editor, records.element, [records.asset]);
+      } finally {
+        hydrating.current = false;
+      }
+      await projectRepository.saveProject(updatedProject);
+      rememberProject(updatedProject);
+      if (!records.element.locked) editor.select(createShapeId(records.element.id));
+      setPaletteOpen(false);
+      setSaveStatus("saved");
+      setMessage(records.element.locked ? "Locked reference background added" : "Reference image added");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not import that image");
+    }
+  };
+
+  const toggleSelectedReferenceLock = () => {
+    if (!editor || selectedShape?.type !== "image" || selectedElement?.type !== "reference-image") return;
+    const locked = !selectedShape.isLocked;
+    const updated: StudioElement = {
+      ...selectedElement,
+      locked,
+      properties: { ...selectedElement.properties, role: locked ? "locked-background" : "reference" },
+    };
+    editor.updateShape({
+      id: selectedShape.id,
+      type: "image",
+      isLocked: locked,
+      meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+    });
+    if (locked) editor.sendToBack([selectedShape.id]);
+    setInspectorOpen(false);
+    setMessage(locked ? "Reference locked behind the design" : "Reference unlocked");
+  };
+
+  const unlockAllReferences = () => {
+    if (!editor) return;
+    const lockedShapes = editor.getCurrentPageShapes().filter((shape): shape is TLImageShape =>
+      shape.type === "image" && shape.isLocked && (shape.meta[STUDIO_META_KEY] as StudioElement | undefined)?.type === "reference-image");
+    for (const shape of lockedShapes) {
+      const semantic = shape.meta[STUDIO_META_KEY] as StudioElement;
+      editor.updateShape({
+        id: shape.id,
+        type: "image",
+        isLocked: false,
+        meta: { ...shape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify({ ...semantic, locked: false, properties: { ...semantic.properties, role: "reference" } })) },
+      });
+    }
+    setMessage(`Unlocked ${lockedShapes.length} reference image${lockedShapes.length === 1 ? "" : "s"}`);
+  };
+
   const createNewProject = async (name: string, mode: StudioProject["mode"]) => {
     const project = createProject(name, mode);
     await projectRepository.saveProject(project);
@@ -606,7 +744,7 @@ export function App() {
     const restored = { ...current, name: document.name, mode: document.mode, updatedAt: now, document };
     hydrating.current = true;
     editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
-    document.elements.forEach((element) => addToEditor(editor, element));
+    document.elements.forEach((element) => addToEditor(editor, element, document.assets));
     document.connections.forEach((connection) => addConnectionToEditor(editor, connection));
     if (document.elements.length) editor.zoomToFit({ animation: { duration: 240 } });
     hydrating.current = false;
@@ -634,6 +772,7 @@ export function App() {
         <button className="button secondary versions-button" onClick={() => { setHandoffOpen(false); setVersionsOpen((open) => !open); }}>Versions ({activeProject.versions.length})</button>
         <button className="button secondary save-version-button" onClick={() => void saveVersion()}>Save Version</button>
         <input ref={fileInput} hidden type="file" accept="application/json,.json" aria-label="Import StudioDocument JSON" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importJson(file); event.target.value = ""; }} />
+        <input ref={referenceImageInput} hidden type="file" accept={REFERENCE_IMAGE_TYPES.join(",")} aria-label="Import reference image" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importReferenceImage(file); event.target.value = ""; }} />
         <button className="button secondary import-button" onClick={() => fileInput.current?.click()}>Import JSON</button>
         <button className="button primary export-button" onClick={() => void prepareHandoff()}>Handoff</button>
       </div>
@@ -662,7 +801,7 @@ export function App() {
           >×</button>
         </div>
         <label>Name<input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} /></label>
-        <label>Semantic type<input value={draft.type} onChange={(event) => updateDraft("type", event.target.value)} /></label>
+        <label>Semantic type<input value={draft.type} readOnly={selectedElement.type === "reference-image"} onChange={(event) => updateDraft("type", event.target.value)} /></label>
         {selectedPreset && <fieldset className="typed-properties">
           <legend>{selectedPreset.label} properties</legend>
           <p>{selectedPreset.description}</p>
@@ -684,6 +823,9 @@ export function App() {
         <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={draft.intent} onChange={(event) => updateDraft("intent", event.target.value)} /></label>
         <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={draft.implementationNotes} onChange={(event) => updateDraft("implementationNotes", event.target.value)} /></label>
         <label>Tags<span>Comma separated.</span><input value={draft.tags} onChange={(event) => updateDraft("tags", event.target.value)} /></label>
+        {selectedElement.type === "reference-image" ? <button type="button" className="button secondary reference-lock-toggle" onClick={toggleSelectedReferenceLock}>
+          {selectedShape?.isLocked ? "Unlock reference image" : "Lock as background"}
+        </button> : null}
         <details className="advanced-properties"><summary>Advanced JSON properties</summary><label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={6} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label></details>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
@@ -713,6 +855,14 @@ export function App() {
           <span><strong>Open properties on selection</strong><small>Turn this off when arranging the canvas.</small></span>
           <input type="checkbox" checked={autoOpenInspector} onChange={(event) => setAutoOpenInspector(event.target.checked)} />
         </label>
+        <section className="reference-import" aria-label="Reference image tools">
+          <div><strong>Screenshot reference</strong><small>Embed an existing design in this project and annotate over it.</small></div>
+          <div className="reference-import-buttons">
+            <button type="button" onClick={() => chooseReferenceImage(false)}>Movable image</button>
+            <button type="button" onClick={() => chooseReferenceImage(true)}>Locked background</button>
+          </div>
+          {lockedReferenceCount > 0 ? <button type="button" className="unlock-references" onClick={unlockAllReferences}>Unlock {lockedReferenceCount} background{lockedReferenceCount === 1 ? "" : "s"}</button> : null}
+        </section>
         <div className="preset-grid">{semanticPresets.map((preset) => <button
           type="button"
           className="preset-button"

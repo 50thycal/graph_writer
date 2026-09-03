@@ -37,4 +37,18 @@ describe("canvas adapter", () => {
     const restored = tldrawShapesToStudioDocument(shapes, document, connections);
     expect(restored.connections).toEqual(document.connections);
   });
+  it("maps reference elements to image shapes without losing their asset link", () => {
+    const document = createStudioDocument({
+      id: "reference-doc", name: "Reference", mode: "board-game",
+      assets: [{ id: "asset-1", type: "image", name: "table.png", mimeType: "image/png", src: "data:image/png;base64,AA==", width: 1000, height: 600 }],
+      elements: [{ id: "reference-1", type: "reference-image", name: "Table", transform: { x: 20, y: 30, width: 500, height: 300 }, content: { assetId: "asset-1" }, locked: true }],
+    });
+    const shapes = studioDocumentToTldrawShapes(document);
+    expect(shapes[0].type).toBe("image");
+    shapes[0].x = 75;
+    const restored = tldrawShapesToStudioDocument(shapes, document);
+    expect(restored.elements[0].content).toEqual({ assetId: "asset-1" });
+    expect(restored.elements[0].transform.x).toBe(75);
+    expect(restored.assets).toEqual(document.assets);
+  });
 });

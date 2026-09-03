@@ -4,7 +4,7 @@ export const STUDIO_META_KEY = "studioElement";
 export const STUDIO_CONNECTION_META_KEY = "studioConnection";
 
 export interface TldrawShapeRecord {
-  id: string; type: "geo"; x: number; y: number; rotation: number;
+  id: string; type: "geo" | "image"; x: number; y: number; rotation: number;
   props: { w: number; h: number; label: string };
   meta: { [STUDIO_META_KEY]: StudioElement };
 }
@@ -19,7 +19,7 @@ export interface TldrawConnectionRecord {
 
 export function studioElementToTldrawShape(element: StudioElement): TldrawShapeRecord {
   return {
-    id: `shape:${element.id}`, type: "geo",
+    id: `shape:${element.id}`, type: element.type === "reference-image" ? "image" : "geo",
     x: element.transform.x, y: element.transform.y, rotation: element.transform.rotation ?? 0,
     props: { w: element.transform.width, h: element.transform.height, label: element.name ?? element.type },
     meta: { [STUDIO_META_KEY]: structuredClone(element) },

@@ -2,6 +2,17 @@ import { z } from "zod";
 
 export const STUDIO_SCHEMA_VERSION = 1 as const;
 
+export const StudioAssetSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("image"),
+  name: z.string().min(1),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
+  src: z.string().startsWith("data:image/"),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  fileSize: z.number().nonnegative().optional(),
+});
+
 export const StudioElementSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
@@ -40,15 +51,28 @@ export const StudioDocumentSchema = z.object({
   createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
   elements: z.array(StudioElementSchema),
   connections: z.array(StudioConnectionSchema),
-  groups: z.array(z.record(z.unknown())), assets: z.array(z.record(z.unknown())),
+  groups: z.array(z.record(z.unknown())), assets: z.array(StudioAssetSchema),
   metadata: z.record(z.unknown()),
 }).superRefine((document, context) => {
   const elementIds = new Set<string>();
+  const assetIds = new Set<string>();
+  for (const [index, asset] of document.assets.entries()) {
+    if (assetIds.has(asset.id)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["assets", index, "id"], message: `Duplicate asset ID: ${asset.id}` });
+    }
+    assetIds.add(asset.id);
+  }
   for (const [index, element] of document.elements.entries()) {
     if (elementIds.has(element.id)) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "id"], message: `Duplicate element ID: ${element.id}` });
     }
     elementIds.add(element.id);
+    if (element.type === "reference-image") {
+      const assetId = element.content?.assetId;
+      if (typeof assetId !== "string" || !assetIds.has(assetId)) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "content", "assetId"], message: `Missing reference image asset: ${String(assetId)}` });
+      }
+    }
   }
 
   const connectionIds = new Set<string>();
@@ -68,6 +92,7 @@ export const StudioDocumentSchema = z.object({
 
 export type StudioElement = z.infer<typeof StudioElementSchema>;
 export type StudioConnection = z.infer<typeof StudioConnectionSchema>;
+export type StudioAsset = z.infer<typeof StudioAssetSchema>;
 export type StudioDocument = z.infer<typeof StudioDocumentSchema>;
 
 export function migrateStudioDocument(value: unknown): unknown {

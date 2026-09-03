@@ -9,11 +9,13 @@ const document = createStudioDocument({
   mode: "graph",
   createdAt: "2026-09-03T12:00:00.000Z",
   updatedAt: "2026-09-03T13:00:00.000Z",
+  connections: [{ id: "analyze", sourceElementId: "input", targetElementId: "agent", type: "flow", label: "analyze", intent: ["Keep direction explicit."] }],
+  assets: [{ id: "asset-1", type: "image", name: "reference.png", mimeType: "image/png", src: "data:image/png;base64,AA==", width: 900, height: 600 }],
   elements: [
     { id: "agent", type: "agent", name: "Planner", transform: { x: 300.4, y: 20.2, width: 240, height: 120 }, properties: { model: "" }, intent: ["Create an actionable plan."], implementationNotes: ["Preserve constraints."] },
     { id: "input", type: "input", name: "Request", transform: { x: 10.1, y: 20.1, width: 180, height: 90 }, properties: { required: true } },
+    { id: "reference", type: "reference-image", name: "Current UI", transform: { x: 0, y: 180, width: 450, height: 300 }, content: { assetId: "asset-1" }, locked: true },
   ],
-  connections: [{ id: "analyze", sourceElementId: "input", targetElementId: "agent", type: "flow", label: "analyze", intent: ["Keep direction explicit."] }],
 });
 
 describe("handoff export", () => {
@@ -25,6 +27,7 @@ describe("handoff export", () => {
     expect(markdown).toContain("| Request | input | required: true |");
     expect(markdown).toContain("| Request | input | 10 | 20 | 180 | 90 |");
     expect(markdown).toContain("Request → Planner (flow) — analyze");
+    expect(markdown).toContain("Current UI — locked background; source reference.png (900×600)");
     expect(markdown).toContain("Keep direction explicit.");
     expect(generateHandoffMarkdown(document, { versionLabel: "Draft after v2" })).toBe(markdown);
   });
