@@ -140,7 +140,10 @@ export function downloadHandoffFile(blob: Blob, name: string) {
   const link = window.document.createElement("a");
   link.href = url;
   link.download = name;
+  link.hidden = true;
+  window.document.body.append(link);
   link.click();
+  link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
