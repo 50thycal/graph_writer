@@ -104,7 +104,9 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     for (const element of referenceImages) {
       const assetId = typeof element.content?.assetId === "string" ? element.content.assetId : "";
       const asset = assetById.get(assetId);
-      lines.push(`- ${displayName(element)} — ${element.locked ? "locked background" : "movable reference"}${asset ? `; source ${asset.name} (${Math.round(asset.width)}×${Math.round(asset.height)})` : ""}`);
+      const opacity = typeof element.appearance?.opacity === "number" ? element.appearance.opacity : 1;
+      const visibility = element.appearance?.hidden === true ? "hidden" : "visible";
+      lines.push(`- ${displayName(element)} — ${visibility} ${element.locked ? "locked background" : "movable reference"}; opacity ${Math.round(opacity * 100)}%${asset ? `; source ${asset.name} (${Math.round(asset.width)}×${Math.round(asset.height)})` : ""}`);
     }
     lines.push("");
   }

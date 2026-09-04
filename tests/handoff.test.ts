@@ -14,7 +14,7 @@ const document = createStudioDocument({
   elements: [
     { id: "agent", type: "agent", name: "Planner", transform: { x: 300.4, y: 20.2, width: 240, height: 120 }, properties: { model: "" }, intent: ["Create an actionable plan."], implementationNotes: ["Preserve constraints."] },
     { id: "input", type: "input", name: "Request", transform: { x: 10.1, y: 20.1, width: 180, height: 90 }, properties: { required: true } },
-    { id: "reference", type: "reference-image", name: "Current UI", transform: { x: 0, y: 180, width: 450, height: 300 }, content: { assetId: "asset-1" }, locked: true },
+    { id: "reference", type: "reference-image", name: "Current UI", transform: { x: 0, y: 180, width: 450, height: 300 }, content: { assetId: "asset-1" }, appearance: { opacity: 0.45, hidden: true }, locked: true },
   ],
 });
 
@@ -27,7 +27,7 @@ describe("handoff export", () => {
     expect(markdown).toContain("| Request | input | required: true |");
     expect(markdown).toContain("| Request | input | 10 | 20 | 180 | 90 |");
     expect(markdown).toContain("Request → Planner (flow) — analyze");
-    expect(markdown).toContain("Current UI — locked background; source reference.png (900×600)");
+    expect(markdown).toContain("Current UI — hidden locked background; opacity 45%; source reference.png (900×600)");
     expect(markdown).toContain("Keep direction explicit.");
     expect(generateHandoffMarkdown(document, { versionLabel: "Draft after v2" })).toBe(markdown);
   });

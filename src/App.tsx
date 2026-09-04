@@ -10,6 +10,7 @@ import { applyStarterTemplate, type StarterTemplate } from "./studio/templates/s
 import { HandoffPanel } from "./features/export/HandoffPanel";
 import { createHandoffBundle, type HandoffBundle } from "./features/export/handoff";
 import { createReferenceRecords, readReferenceImage, REFERENCE_IMAGE_TYPES } from "./features/import/reference-image";
+import { formatStudioImportError } from "./features/import/import-errors";
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
@@ -49,13 +50,17 @@ function addToEditor(editor: Editor, element: StudioElement, assets: StudioAsset
       }]);
     }
     const shapeId = createShapeId(element.id);
+    const storedOpacity = typeof element.appearance?.opacity === "number" ? element.appearance.opacity : 1;
+    const opacity = Math.min(1, Math.max(0.1, storedOpacity));
+    const hidden = element.appearance?.hidden === true;
     editor.createShape({
       id: shapeId,
       type: "image",
       x: record.x,
       y: record.y,
       rotation: record.rotation,
-      isLocked: element.locked,
+      isLocked: hidden ? true : element.locked,
+      opacity: hidden ? 0 : opacity,
       props: { assetId, w: record.props.w, h: record.props.h },
       meta: { [STUDIO_META_KEY]: JSON.parse(JSON.stringify(record.meta[STUDIO_META_KEY])) },
     });
@@ -88,6 +93,7 @@ function readShapes(editor: Editor): TldrawShapeRecord[] {
     .map((shape) => {
       const semantic = shape.meta[STUDIO_META_KEY] as StudioElement;
       const visibleLabel = shape.type === "geo" ? editor.getShapeUtil(shape).getText(shape)?.trim() : undefined;
+      const hiddenReference = shape.type === "image" && semantic.type === "reference-image" && semantic.appearance?.hidden === true;
       return {
         id: shape.id, type: shape.type, x: shape.x, y: shape.y, rotation: shape.rotation,
         props: {
@@ -99,7 +105,10 @@ function readShapes(editor: Editor): TldrawShapeRecord[] {
           [STUDIO_META_KEY]: {
             ...semantic,
             name: visibleLabel || semantic.name,
-            locked: shape.isLocked,
+            appearance: shape.type === "image" && semantic.type === "reference-image"
+              ? { ...semantic.appearance, opacity: hiddenReference ? semantic.appearance?.opacity ?? 1 : shape.opacity, hidden: hiddenReference }
+              : semantic.appearance,
+            locked: hiddenReference ? semantic.locked : shape.isLocked,
           },
         },
       };
@@ -244,6 +253,9 @@ export function App() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [jsonImportOpen, setJsonImportOpen] = useState(false);
+  const [jsonPasteValue, setJsonPasteValue] = useState("");
+  const [jsonImportError, setJsonImportError] = useState<string | null>(null);
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [handoffBundle, setHandoffBundle] = useState<HandoffBundle | null>(null);
   const [handoffError, setHandoffError] = useState<string | null>(null);
@@ -273,6 +285,8 @@ export function App() {
     setInspectorOpen(false);
     setVersionsOpen(false);
     setPaletteOpen(false);
+    setJsonImportOpen(false);
+    setJsonImportError(null);
     setHandoffOpen(false);
     setHandoffBundle(null);
     setHandoffError(null);
@@ -351,6 +365,8 @@ export function App() {
       setInspectorOpen(false);
       setVersionsOpen(false);
       setPaletteOpen(false);
+      setJsonImportOpen(false);
+      setJsonImportError(null);
       setHandoffOpen(false);
       setHandoffBundle(null);
       setHandoffError(null);
@@ -401,6 +417,7 @@ export function App() {
 
     setVersionsOpen(false);
     setPaletteOpen(false);
+    setJsonImportOpen(false);
     setInspectorOpen(false);
     setHandoffBundle(null);
     setHandoffError(null);
@@ -423,26 +440,59 @@ export function App() {
     }
   };
 
-  const importJson = async (file: File) => {
+  const applyImportedDocument = async (document: ReturnType<typeof parseStudioDocument>) => {
     if (!editor) return;
+    const current = activeProjectRef.current;
+    if (!current) return;
+    hydrating.current = true;
     try {
-      const document = parseStudioDocument(JSON.parse(await file.text()));
-      const current = activeProjectRef.current;
-      if (!current) return;
-      hydrating.current = true;
       editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
       document.elements.forEach((element) => addToEditor(editor, element, document.assets));
       document.connections.forEach((connection) => addConnectionToEditor(editor, connection));
-      editor.zoomToFit({ animation: { duration: 240 } });
+      if (document.elements.length) editor.zoomToFit({ animation: { duration: 240 } });
+    } finally {
       hydrating.current = false;
-      const importedProject = { ...current, name: document.name, mode: document.mode, updatedAt: new Date().toISOString(), document };
-      await projectRepository.saveProject(importedProject);
-      rememberProject(importedProject);
-      setSaveStatus("saved");
-      setMessage(`Imported ${document.elements.length} semantic objects`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Import failed");
     }
+    const importedProject = { ...current, name: document.name, mode: document.mode, updatedAt: new Date().toISOString(), document };
+    await projectRepository.saveProject(importedProject);
+    rememberProject(importedProject);
+    setSaveStatus("saved");
+    setJsonImportOpen(false);
+    setJsonImportError(null);
+    setJsonPasteValue("");
+    setMessage(`Imported ${document.elements.length} semantic objects`);
+  };
+
+  const importJsonText = async (value: string) => {
+    try {
+      if (!value.trim()) throw new Error("Paste a StudioDocument JSON value first.");
+      await applyImportedDocument(parseStudioDocument(JSON.parse(value)));
+    } catch (error) {
+      const reason = formatStudioImportError(error);
+      setJsonImportError(reason);
+      setJsonImportOpen(true);
+      setMessage(reason.split("\n")[0]);
+    }
+  };
+
+  const importJson = async (file: File) => {
+    try {
+      await importJsonText(await file.text());
+    } catch (error) {
+      const reason = formatStudioImportError(error);
+      setJsonImportError(reason);
+      setJsonImportOpen(true);
+      setMessage(reason.split("\n")[0]);
+    }
+  };
+
+  const openJsonImport = () => {
+    setVersionsOpen(false);
+    setPaletteOpen(false);
+    setInspectorOpen(false);
+    setHandoffOpen(false);
+    setJsonImportError(null);
+    setJsonImportOpen(true);
   };
 
   const count = editor ? readShapes(editor).length : activeProject?.document.elements.length ?? 0;
@@ -456,6 +506,11 @@ export function App() {
     ? readShapes(editor).map((shape) => shape.meta[STUDIO_META_KEY]).filter((element) => element.type === "reference-image")
     : activeProject?.document.elements.filter((element) => element.type === "reference-image") ?? [];
   const lockedReferenceCount = liveReferenceElements.filter((element) => element.locked).length;
+  const hiddenReferenceCount = liveReferenceElements.filter((element) => element.appearance?.hidden === true).length;
+  const visibleReferenceCount = liveReferenceElements.length - hiddenReferenceCount;
+  const selectedReferenceOpacity = selectedElement?.type === "reference-image"
+    ? Math.round((typeof selectedElement.appearance?.opacity === "number" ? selectedElement.appearance.opacity : selectedShape?.opacity ?? 1) * 100)
+    : 100;
   const selectedPreset = selectedElement && activeProject ? findSemanticObjectPreset(selectedElement.type, activeProject.mode) : undefined;
   const selectedPropertyFields = selectedPreset ? propertyFieldsForPreset(selectedPreset) : [];
   const selectedProperties = draft ? parseDraftProperties(draft.properties) : {};
@@ -665,10 +720,67 @@ export function App() {
     setMessage(locked ? "Reference locked behind the design" : "Reference unlocked");
   };
 
+  const updateSelectedReferenceOpacity = (percent: number) => {
+    if (!editor || selectedShape?.type !== "image" || selectedElement?.type !== "reference-image") return;
+    const opacity = Math.min(1, Math.max(0.1, percent / 100));
+    const updated: StudioElement = {
+      ...selectedElement,
+      appearance: { ...selectedElement.appearance, opacity, hidden: false },
+    };
+    editor.updateShape({
+      id: selectedShape.id,
+      type: "image",
+      opacity,
+      meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+    });
+    setMessage(`Reference opacity ${Math.round(opacity * 100)}%`);
+  };
+
+  const setReferenceVisibility = (visible: boolean) => {
+    if (!editor) return;
+    const shapes = editor.getCurrentPageShapes().filter((shape): shape is TLImageShape => {
+      if (shape.type !== "image") return false;
+      const semantic = shape.meta[STUDIO_META_KEY] as StudioElement | undefined;
+      return semantic?.type === "reference-image" && (visible ? semantic.appearance?.hidden === true : semantic.appearance?.hidden !== true);
+    });
+    for (const shape of shapes) {
+      const semantic = shape.meta[STUDIO_META_KEY] as StudioElement;
+      const opacity = Math.min(1, Math.max(0.1, typeof semantic.appearance?.opacity === "number" ? semantic.appearance.opacity : shape.opacity || 1));
+      const updated: StudioElement = { ...semantic, appearance: { ...semantic.appearance, opacity, hidden: !visible } };
+      editor.updateShape({
+        id: shape.id,
+        type: "image",
+        opacity: visible ? opacity : 0,
+        isLocked: visible ? Boolean(semantic.locked) : true,
+        meta: { ...shape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+      });
+    }
+    if (!visible) setInspectorOpen(false);
+    setMessage(`${visible ? "Showed" : "Hid"} ${shapes.length} reference image${shapes.length === 1 ? "" : "s"}`);
+  };
+
+  const hideSelectedReference = () => {
+    if (!editor || selectedShape?.type !== "image" || selectedElement?.type !== "reference-image") return;
+    const opacity = Math.min(1, Math.max(0.1, typeof selectedElement.appearance?.opacity === "number" ? selectedElement.appearance.opacity : selectedShape.opacity || 1));
+    const updated: StudioElement = { ...selectedElement, appearance: { ...selectedElement.appearance, opacity, hidden: true } };
+    editor.updateShape({
+      id: selectedShape.id,
+      type: "image",
+      opacity: 0,
+      isLocked: true,
+      meta: { ...selectedShape.meta, [STUDIO_META_KEY]: JSON.parse(JSON.stringify(updated)) },
+    });
+    editor.selectNone();
+    setInspectorOpen(false);
+    setMessage("Reference hidden; restore it from the object library");
+  };
+
   const unlockAllReferences = () => {
     if (!editor) return;
     const lockedShapes = editor.getCurrentPageShapes().filter((shape): shape is TLImageShape =>
-      shape.type === "image" && shape.isLocked && (shape.meta[STUDIO_META_KEY] as StudioElement | undefined)?.type === "reference-image");
+      shape.type === "image" && (shape.meta[STUDIO_META_KEY] as StudioElement | undefined)?.type === "reference-image"
+      && (shape.meta[STUDIO_META_KEY] as StudioElement).locked === true
+      && (shape.meta[STUDIO_META_KEY] as StudioElement).appearance?.hidden !== true);
     for (const shape of lockedShapes) {
       const semantic = shape.meta[STUDIO_META_KEY] as StudioElement;
       editor.updateShape({
@@ -769,11 +881,11 @@ export function App() {
       <div className="brand-lockup"><button className="brand-mark" aria-label="Back to projects" onClick={leaveProject}>GW</button><div><p>{activeProject.mode.replace("-", " ")}</p><input className="project-name-input" aria-label="Project name" value={activeProject.name} onChange={(event) => renameProject(event.target.value)} /></div></div>
       <div className="header-actions">
         <span className={`save-status ${saveStatus}`}>{saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save error" : "Saved"}</span>
-        <button className="button secondary versions-button" onClick={() => { setHandoffOpen(false); setVersionsOpen((open) => !open); }}>Versions ({activeProject.versions.length})</button>
+        <button className="button secondary versions-button" onClick={() => { setHandoffOpen(false); setJsonImportOpen(false); setVersionsOpen((open) => !open); }}>Versions ({activeProject.versions.length})</button>
         <button className="button secondary save-version-button" onClick={() => void saveVersion()}>Save Version</button>
         <input ref={fileInput} hidden type="file" accept="application/json,.json" aria-label="Import StudioDocument JSON" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importJson(file); event.target.value = ""; }} />
         <input ref={referenceImageInput} hidden type="file" accept={REFERENCE_IMAGE_TYPES.join(",")} aria-label="Import reference image" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importReferenceImage(file); event.target.value = ""; }} />
-        <button className="button secondary import-button" onClick={() => fileInput.current?.click()}>Import JSON</button>
+        <button className="button secondary import-button" onClick={openJsonImport}>Import JSON</button>
         <button className="button primary export-button" onClick={() => void prepareHandoff()}>Handoff</button>
       </div>
     </header>
@@ -789,6 +901,18 @@ export function App() {
         </article>)}</div>
       </aside> : null}
       {handoffOpen ? <HandoffPanel bundle={handoffBundle} error={handoffError} onClose={closeHandoff} /> : null}
+      {jsonImportOpen ? <aside className="json-import-panel" aria-label="Import StudioDocument JSON">
+        <div className="inspector-heading">
+          <div><p>Portable project data</p><h2>Import JSON</h2></div>
+          <button type="button" className="icon-button" aria-label="Close JSON import" onClick={() => setJsonImportOpen(false)}>×</button>
+        </div>
+        <p className="json-import-explanation">Choose an exported StudioDocument file or paste its complete JSON below. Importing replaces the current draft.</p>
+        <button type="button" className="button secondary json-file-button" onClick={() => fileInput.current?.click()}>Choose JSON file</button>
+        <div className="json-import-divider"><span>or paste JSON</span></div>
+        <label>StudioDocument JSON<textarea className="code-field" rows={11} value={jsonPasteValue} placeholder="{ &quot;schemaVersion&quot;: 1, … }" onChange={(event) => { setJsonPasteValue(event.target.value); setJsonImportError(null); }} /></label>
+        {jsonImportError ? <pre className="json-import-error" role="alert">{jsonImportError}</pre> : null}
+        <button type="button" className="button primary" disabled={!jsonPasteValue.trim()} onClick={() => void importJsonText(jsonPasteValue)}>Import pasted JSON</button>
+      </aside> : null}
       {draft && selectedElement && inspectorOpen && <aside className="semantic-inspector" aria-label="Semantic object details">
         <div className="inspector-heading">
           <div><p>Attached context</p><h2>Semantic details</h2></div>
@@ -823,9 +947,13 @@ export function App() {
         <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={draft.intent} onChange={(event) => updateDraft("intent", event.target.value)} /></label>
         <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={draft.implementationNotes} onChange={(event) => updateDraft("implementationNotes", event.target.value)} /></label>
         <label>Tags<span>Comma separated.</span><input value={draft.tags} onChange={(event) => updateDraft("tags", event.target.value)} /></label>
-        {selectedElement.type === "reference-image" ? <button type="button" className="button secondary reference-lock-toggle" onClick={toggleSelectedReferenceLock}>
-          {selectedShape?.isLocked ? "Unlock reference image" : "Lock as background"}
-        </button> : null}
+        {selectedElement.type === "reference-image" ? <fieldset className="reference-controls">
+          <legend>Reference display</legend>
+          <label>Opacity <span>{selectedReferenceOpacity}%</span><input aria-label="Reference opacity" type="range" min="10" max="100" step="5" value={selectedReferenceOpacity} onChange={(event) => updateSelectedReferenceOpacity(Number(event.target.value))} /></label>
+          <div><button type="button" className="button secondary reference-lock-toggle" onClick={toggleSelectedReferenceLock}>
+            {selectedShape?.isLocked ? "Unlock reference" : "Lock as background"}
+          </button><button type="button" className="button secondary" onClick={hideSelectedReference}>Hide reference</button></div>
+        </fieldset> : null}
         <details className="advanced-properties"><summary>Advanced JSON properties</summary><label>Custom properties<span>Valid JSON object.</span><textarea className="code-field" rows={6} value={draft.properties} onChange={(event) => updateDraft("properties", event.target.value)} /></label></details>
         <button className="button primary inspector-save" onClick={saveSemanticDetails}>Save attached context</button>
       </aside>}
@@ -861,7 +989,15 @@ export function App() {
             <button type="button" onClick={() => chooseReferenceImage(false)}>Movable image</button>
             <button type="button" onClick={() => chooseReferenceImage(true)}>Locked background</button>
           </div>
+          <div className="reference-import-buttons">
+            {visibleReferenceCount > 0 ? <button type="button" onClick={() => setReferenceVisibility(false)}>Hide all references</button> : null}
+            {hiddenReferenceCount > 0 ? <button type="button" onClick={() => setReferenceVisibility(true)}>Show {hiddenReferenceCount} hidden</button> : null}
+          </div>
           {lockedReferenceCount > 0 ? <button type="button" className="unlock-references" onClick={unlockAllReferences}>Unlock {lockedReferenceCount} background{lockedReferenceCount === 1 ? "" : "s"}</button> : null}
+        </section>
+        <section className="reference-import" aria-label="StudioDocument import tools">
+          <div><strong>StudioDocument JSON</strong><small>Restore an export from a file or paste JSON with field-level validation.</small></div>
+          <button type="button" onClick={openJsonImport}>Open JSON importer</button>
         </section>
         <div className="preset-grid">{semanticPresets.map((preset) => <button
           type="button"
@@ -898,7 +1034,13 @@ export function App() {
           data-short={paletteOpen ? "×" : "+"}
           aria-expanded={paletteOpen}
           aria-label={paletteOpen ? "Close semantic object library" : "Open semantic object library"}
-          onClick={() => setPaletteOpen((open) => !open)}
+          onClick={() => {
+            setJsonImportOpen(false);
+            setVersionsOpen(false);
+            setHandoffOpen(false);
+            setInspectorOpen(false);
+            setPaletteOpen((open) => !open);
+          }}
         >{paletteOpen ? "× Close objects" : "＋ Add object"}</button>
       </div>
     </section>

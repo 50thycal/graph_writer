@@ -71,6 +71,7 @@ export function createReferenceRecords(input: {
         zIndex: input.locked ? -1 : undefined,
       },
       content: { assetId },
+      appearance: { opacity: 1, hidden: false },
       properties: { role: input.locked ? "locked-background" : "reference", originalFileName: input.file.name },
       intent: ["Use this image as visual reference context for the design."],
       implementationNotes: [],

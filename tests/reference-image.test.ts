@@ -18,6 +18,7 @@ describe("reference image import", () => {
     expect(records.asset.id).toBe("reference-asset-test");
     expect(records.element.content).toEqual({ assetId: records.asset.id });
     expect(records.element.transform).toMatchObject({ x: 100, y: 150, width: 800, height: 400, zIndex: -1 });
+    expect(records.element.appearance).toEqual({ opacity: 1, hidden: false });
     expect(records.element.locked).toBe(true);
   });
 
