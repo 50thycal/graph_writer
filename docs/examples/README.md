@@ -21,6 +21,17 @@ and each subsystem map points back through `metadata.parentMap`.
 kept as a stress case for layout work — 45 nodes and 52 connections on one canvas, with
 ~99 edge crossings — not as a document to read.
 
+## Subway tabletop
+
+`subway-tabletop.json` — `board-game` mode. The physical table for the Subway prototype in
+`50thycal/party-games` (`src/games/subway/`): pegboard at the centre, opponent edge and public
+schedule above it, contract office and card market to the left, logbook and pieces to the right,
+your own edge in front. 27 pieces, 23 connections.
+
+Piece positions mirror the implemented tabletop world rather than an abstract graph, so the
+document reads as a table you could sit at. Every element type resolves in the board-game catalog,
+so the inspector shows real property fields (`drawRule`, `visibility`, `capacity`, `state`).
+
 ## Layout conventions used by these maps
 
 Straight center-to-center arrows with mid-path labels only stay readable if the layout

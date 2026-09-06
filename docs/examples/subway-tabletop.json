@@ -1,0 +1,1197 @@
+{
+  "schemaVersion": 1,
+  "id": "document-subway-tabletop",
+  "name": "Subway \u2014 Tabletop",
+  "description": "The physical table for Subway v0.5: pegboard at the centre, public schedule and contract market around it, each company's edge in front of them.",
+  "mode": "board-game",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "rule-sequence",
+      "type": "rule",
+      "name": "One pass, seven phases",
+      "transform": {
+        "x": 60,
+        "y": 40,
+        "width": 520,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "phase": "game",
+        "priority": "critical",
+        "order": "Setup \u2192 Procurement \u2192 Engineering \u2192 Scheduling \u2192 Starter placement \u2192 Construction \u2192 Scoring"
+      },
+      "intent": [
+        "Every decision about WHEN work happens is made in Scheduling, before a single peg goes down.",
+        "Construction only executes the locked plan, period by period \u2014 there is no re-scheduling and no secret commitment once it starts."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "rule",
+        "phase"
+      ],
+      "locked": false
+    },
+    {
+      "id": "rule-refusal",
+      "type": "rule",
+      "name": "First refusal alternates",
+      "transform": {
+        "x": 60,
+        "y": 270,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "phase": "procurement",
+        "priority": "high"
+      },
+      "intent": [
+        "Contract 1 to seat A, contract 2 to seat B, and so on \u2014 independent of construction priority.",
+        "Refuse and you draft a face-up card instead; the opposition then buys or passes."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "rule",
+        "phase"
+      ],
+      "locked": false
+    },
+    {
+      "id": "rule-cap",
+      "type": "rule",
+      "name": "Hard cap: 3 contracts",
+      "transform": {
+        "x": 330,
+        "y": 270,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "phase": "procurement",
+        "priority": "high"
+      },
+      "intent": [
+        "Six contracts that must all sell, against a cap of three, forces the split to exactly 3/3 every game.",
+        "The draft decides WHICH three you get and WHAT you pay \u2014 never how many."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "rule",
+        "phase"
+      ],
+      "locked": false
+    },
+    {
+      "id": "office",
+      "type": "tabletop-panel",
+      "name": "Contract office",
+      "transform": {
+        "x": 60,
+        "y": 510,
+        "width": 520,
+        "height": 420,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "The six Line Contracts on offer, the card market, and the Destination row",
+        "visibility": "public"
+      },
+      "intent": [
+        "The whole market is one printed piece, so a company can read price, recipe and remaining offers at a glance."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "contract-deck",
+      "type": "deck",
+      "name": "Line Contract deck",
+      "transform": {
+        "x": 60,
+        "y": 970,
+        "width": 250,
+        "height": 220,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cardType": "line-contract",
+        "count": 6,
+        "drawRule": "Revealed one at a time; all six are bought before the phase ends."
+      },
+      "intent": [
+        "Short, Branch, Medium, Express, Crosstown, Long \u2014 $50M of contracts against $34M of starting capital.",
+        "The recipe on the card IS the contract: node count, build periods and completion all derive from it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "deck",
+        "contract"
+      ],
+      "locked": false
+    },
+    {
+      "id": "discount-yard",
+      "type": "tabletop-panel",
+      "name": "Discount Yard",
+      "transform": {
+        "x": 330,
+        "y": 970,
+        "width": 250,
+        "height": 220,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "Contracts nobody bought, marked down $2M per double pass (floor $3M)",
+        "visibility": "public"
+      },
+      "intent": [
+        "Cleared one at a time under the same alternating refusal once the deck empties.",
+        "A contract declined by both at the floor is assigned to the richest legal buyer rather than looping forever."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "deck-eng",
+      "type": "deck",
+      "name": "Engineering deck",
+      "transform": {
+        "x": 60,
+        "y": 1230,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cardType": "engineering",
+        "count": 10,
+        "drawRule": "Three face up; drafting refills the slot at once."
+      },
+      "intent": [
+        "Objectives scored at the end \u2014 straight runs, bends, crossings, terminals, network shapes."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "deck",
+        "card-market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "deck-sched",
+      "type": "deck",
+      "name": "Scheduling deck",
+      "transform": {
+        "x": 330,
+        "y": 1230,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cardType": "scheduling",
+        "count": 3,
+        "drawRule": "Three face up; drafting refills the slot at once."
+      },
+      "intent": [
+        "Early, Float, Priority \u2014 they bend the calendar, which is the real constraint at 16 periods."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "deck",
+        "card-market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "deck-constr",
+      "type": "deck",
+      "name": "Construction deck",
+      "transform": {
+        "x": 60,
+        "y": 1470,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cardType": "construction",
+        "count": 3,
+        "drawRule": "Three face up; drafting refills the slot at once."
+      },
+      "intent": [
+        "Overtime and Surge buy an extra action inside a period the schedule already fixed."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "deck",
+        "card-market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "dest-row",
+      "type": "deck",
+      "name": "Destination row",
+      "transform": {
+        "x": 330,
+        "y": 1470,
+        "width": 250,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cardType": "destination",
+        "count": 3,
+        "drawRule": "Three face up at the start of the Engineering draft; two per company."
+      },
+      "intent": [
+        "+3 VP each, and the only cards that tell you WHERE to build rather than how."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "deck",
+        "card-market"
+      ],
+      "locked": false
+    },
+    {
+      "id": "opponent",
+      "type": "player-area",
+      "name": "Opponent's edge",
+      "transform": {
+        "x": 640,
+        "y": 40,
+        "width": 1320,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "light-green",
+        "fill": "solid"
+      },
+      "properties": {
+        "player": "opponent",
+        "visibility": "public",
+        "capacity": 3
+      },
+      "intent": [
+        "Public fields and counts only: cash, contracts held, cards in hand as a number.",
+        "Privacy is a rendering convention, not server secrecy \u2014 no opposing card face is ever put on this edge."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "player-area",
+        "privacy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "schedule",
+      "type": "track",
+      "name": "Public schedule board",
+      "transform": {
+        "x": 640,
+        "y": 270,
+        "width": 1320,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "minimum": 1,
+        "maximum": 16,
+        "current": 1,
+        "unit": "build period"
+      },
+      "intent": [
+        "16 periods against one free crew: a portfolio over 16 build periods cannot run end to end at all.",
+        "Blocks are locked here in Scheduling and then simply executed \u2014 the Gantt IS the plan."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "track",
+        "schedule"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pegboard",
+      "type": "board",
+      "name": "Metropolitan pegboard",
+      "transform": {
+        "x": 640,
+        "y": 510,
+        "width": 1320,
+        "height": 520,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "dimensions": "27 \u00d7 9 holes",
+        "zones": [
+          "six stations",
+          "two Major Stations 17 columns apart",
+          "board edge (legal starters)"
+        ]
+      },
+      "intent": [
+        "The centre of the table: everything else is arranged around it and nothing scrolls away from it.",
+        "Routes start at the board EDGE, never in the interior \u2014 the physical game's rule, kept."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "board",
+        "centre"
+      ],
+      "locked": false
+    },
+    {
+      "id": "logbook",
+      "type": "tabletop-panel",
+      "name": "Logbook",
+      "transform": {
+        "x": 2020,
+        "y": 510,
+        "width": 460,
+        "height": 520,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "Public event stream: accepted actions, turns, periods, card plays",
+        "visibility": "public"
+      },
+      "intent": [
+        "Narration lands where players are already looking, instead of status text living off to one side."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "narration"
+      ],
+      "locked": false
+    },
+    {
+      "id": "treasury",
+      "type": "track",
+      "name": "Company treasury",
+      "transform": {
+        "x": 2020,
+        "y": 270,
+        "width": 460,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "minimum": 0,
+        "maximum": 34,
+        "current": 34,
+        "unit": "$M"
+      },
+      "intent": [
+        "$34M starting capital against ~$25M of contracts \u2014 roughly a 74% squeeze by design.",
+        "Cash still owed at scoring costs 2 VP per $1M."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "track",
+        "economy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "scoring",
+      "type": "rule",
+      "name": "Scoring",
+      "transform": {
+        "x": 2020,
+        "y": 40,
+        "width": 460,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "phase": "scoring",
+        "priority": "critical"
+      },
+      "intent": [
+        "Completed lines, Major/minor stations (5 / 2), Destinations (+3), Survey Pins actually built through (+1).",
+        "Incomplete lines are a real penalty, so an over-bought portfolio loses twice."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "rule",
+        "phase"
+      ],
+      "locked": false
+    },
+    {
+      "id": "my-lines",
+      "type": "player-area",
+      "name": "Your line docks",
+      "transform": {
+        "x": 640,
+        "y": 1070,
+        "width": 640,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "light-green",
+        "fill": "solid"
+      },
+      "properties": {
+        "player": "local",
+        "visibility": "public",
+        "capacity": 3
+      },
+      "intent": [
+        "Each line keeps a permanent, globally distinct colour, letter code and dash pattern \u2014 nothing depends on colour alone.",
+        "Colour is the LINE; the peg's outer ring and the company badge carry ownership."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "player-area",
+        "lines"
+      ],
+      "locked": false
+    },
+    {
+      "id": "my-hand",
+      "type": "player-area",
+      "name": "Your hand",
+      "transform": {
+        "x": 1320,
+        "y": 1070,
+        "width": 640,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "light-green",
+        "fill": "solid"
+      },
+      "properties": {
+        "player": "local",
+        "visibility": "owner",
+        "capacity": 10
+      },
+      "intent": [
+        "Engineering objectives, Destinations, Scheduling and Construction cards \u2014 faces visible only to their owner."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "player-area",
+        "privacy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "eng-slip",
+      "type": "tabletop-panel",
+      "name": "Engineering slip",
+      "transform": {
+        "x": 640,
+        "y": 1310,
+        "width": 640,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "Your committed objectives and whether each currently reads as met",
+        "visibility": "owner"
+      },
+      "intent": [
+        "Commitment is public in count, private in content."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "private"
+      ],
+      "locked": false
+    },
+    {
+      "id": "planner",
+      "type": "tabletop-panel",
+      "name": "Route planner",
+      "transform": {
+        "x": 1320,
+        "y": 1310,
+        "width": 640,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "A saved phantom route, available throughout Construction",
+        "visibility": "owner"
+      },
+      "intent": [
+        "Genuinely non-binding and client-local: putting a plan in shared game state would expose it and make it look authoritative."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "private"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pegs",
+      "type": "token",
+      "name": "Line pegs",
+      "transform": {
+        "x": 2020,
+        "y": 1070,
+        "width": 200,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "line",
+        "quantity": 39,
+        "state": "available"
+      },
+      "intent": [
+        "One peg per node in the recipe. The peg is the record \u2014 a placed peg is not taken back."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "token",
+        "piece"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pins",
+      "type": "token",
+      "name": "Survey Pins",
+      "transform": {
+        "x": 2260,
+        "y": 1070,
+        "width": 220,
+        "height": 200,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "company",
+        "quantity": 5,
+        "state": "available"
+      },
+      "intent": [
+        "$1M each, five at most, +1 VP only if the assigned line actually builds through the pinned hole.",
+        "A bet on your own route surviving the calendar."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "token",
+        "piece"
+      ],
+      "locked": false
+    },
+    {
+      "id": "priority",
+      "type": "token",
+      "name": "Priority marker",
+      "transform": {
+        "x": 2020,
+        "y": 1310,
+        "width": 200,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "active-company",
+        "quantity": 1,
+        "state": "in-play"
+      },
+      "intent": [
+        "Odd periods to one company, even to the other; a Priority Permit overrides exactly one contested period."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "token",
+        "piece"
+      ],
+      "locked": false
+    },
+    {
+      "id": "period",
+      "type": "token",
+      "name": "Period marker",
+      "transform": {
+        "x": 2260,
+        "y": 1310,
+        "width": 220,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "table",
+        "quantity": 1,
+        "state": "in-play"
+      },
+      "intent": [
+        "Advances 1 \u2192 16. When it runs out, unfinished lines score as incomplete."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "token",
+        "piece"
+      ],
+      "locked": false
+    },
+    {
+      "id": "results",
+      "type": "tabletop-panel",
+      "name": "Results sheet",
+      "transform": {
+        "x": 2020,
+        "y": 1540,
+        "width": 460,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "purpose": "Final scoring, laid on the table at RESULTS",
+        "visibility": "public"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "tabletop-panel",
+        "endgame"
+      ],
+      "locked": false
+    },
+    {
+      "id": "crew",
+      "type": "token",
+      "name": "Crew",
+      "transform": {
+        "x": 640,
+        "y": 1540,
+        "width": 640,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "company",
+        "quantity": 1,
+        "state": "in-play"
+      },
+      "intent": [
+        "One crew is free; every additional simultaneous block costs $2M per period it overlaps.",
+        "Second-crew capacity is bought in Scheduling and paid at lock \u2014 the calendar is the ceiling, not the cash."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "token",
+        "economy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "mobilization",
+      "type": "rule",
+      "name": "Mobilization surcharge",
+      "transform": {
+        "x": 1320,
+        "y": 1540,
+        "width": 640,
+        "height": 190,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "phase": "scheduling",
+        "priority": "normal",
+        "tiers": "start by P3 $3M \u00b7 by P6 $2M \u00b7 by P9 $1M \u00b7 later free"
+      },
+      "intent": [
+        "Starting early costs money; starting late costs calendar. That tension is the whole Scheduling phase."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "rule",
+        "phase"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "f-deck-office",
+      "sourceElementId": "contract-deck",
+      "targetElementId": "office",
+      "type": "flow",
+      "label": "reveal one",
+      "properties": {
+        "cadence": "one contract at a time"
+      },
+      "intent": [
+        "All six sell before Procurement ends \u2014 they do not all have to be completed."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-office-lines",
+      "sourceElementId": "office",
+      "targetElementId": "my-lines",
+      "type": "flow",
+      "label": "buy \u2192 dock",
+      "properties": {
+        "cost": "list price, or marked down from the Yard"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-office-yard",
+      "sourceElementId": "office",
+      "targetElementId": "discount-yard",
+      "type": "flow",
+      "label": "double pass",
+      "properties": {
+        "markdown": "\u2212$2M, floor $3M"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-yard-lines",
+      "sourceElementId": "discount-yard",
+      "targetElementId": "my-lines",
+      "type": "flow",
+      "label": "cleared last",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-eng-hand",
+      "sourceElementId": "deck-eng",
+      "targetElementId": "my-hand",
+      "type": "flow",
+      "label": "pass and draft",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "draft"
+      ]
+    },
+    {
+      "id": "f-sched-hand",
+      "sourceElementId": "deck-sched",
+      "targetElementId": "my-hand",
+      "type": "flow",
+      "label": "pass and draft",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "draft"
+      ]
+    },
+    {
+      "id": "f-constr-hand",
+      "sourceElementId": "deck-constr",
+      "targetElementId": "my-hand",
+      "type": "flow",
+      "label": "pass and draft",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "draft"
+      ]
+    },
+    {
+      "id": "f-dest-hand",
+      "sourceElementId": "dest-row",
+      "targetElementId": "my-hand",
+      "type": "flow",
+      "label": "draft two",
+      "properties": {
+        "vp": 3
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "draft"
+      ]
+    },
+    {
+      "id": "f-hand-schedule",
+      "sourceElementId": "my-hand",
+      "targetElementId": "schedule",
+      "type": "flow",
+      "label": "lock blocks",
+      "properties": {
+        "phase": "SCHEDULING"
+      },
+      "intent": [
+        "Scheduling cards are spent here or not at all \u2014 Construction cannot re-plan."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-schedule-board",
+      "sourceElementId": "schedule",
+      "targetElementId": "pegboard",
+      "type": "flow",
+      "label": "execute the plan",
+      "properties": {
+        "phase": "CONSTRUCTION"
+      },
+      "intent": [
+        "Period by period, in priority order. The schedule stops being editable the moment it locks."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-hand-board",
+      "sourceElementId": "my-hand",
+      "targetElementId": "pegboard",
+      "type": "flow",
+      "label": "play into a placement",
+      "properties": {
+        "phase": "CONSTRUCTION"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-pegs-board",
+      "sourceElementId": "pegs",
+      "targetElementId": "pegboard",
+      "type": "dependency",
+      "label": "one peg per node",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "piece"
+      ]
+    },
+    {
+      "id": "f-pins-board",
+      "sourceElementId": "pins",
+      "targetElementId": "pegboard",
+      "type": "dependency",
+      "label": "pin a hole",
+      "properties": {
+        "vp": 1
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "piece"
+      ]
+    },
+    {
+      "id": "f-priority-schedule",
+      "sourceElementId": "priority",
+      "targetElementId": "schedule",
+      "type": "dependency",
+      "label": "who acts first",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "piece"
+      ]
+    },
+    {
+      "id": "f-period-schedule",
+      "sourceElementId": "period",
+      "targetElementId": "schedule",
+      "type": "dependency",
+      "label": "advances 1 \u2192 16",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "piece"
+      ]
+    },
+    {
+      "id": "f-planner-board",
+      "sourceElementId": "planner",
+      "targetElementId": "pegboard",
+      "type": "relationship",
+      "label": "phantom route",
+      "properties": {},
+      "intent": [
+        "Private and non-binding: it survives into Construction, but the table never treats it as a commitment."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-board-log",
+      "sourceElementId": "pegboard",
+      "targetElementId": "logbook",
+      "type": "flow",
+      "label": "accepted actions",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "narration"
+      ]
+    },
+    {
+      "id": "f-board-lines",
+      "sourceElementId": "pegboard",
+      "targetElementId": "my-lines",
+      "type": "flow",
+      "label": "completed line",
+      "properties": {},
+      "intent": [
+        "A recipe finished in time scores; one left short of its last segment is a penalty."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-lines-results",
+      "sourceElementId": "my-lines",
+      "targetElementId": "results",
+      "type": "flow",
+      "label": "final scoring",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "endgame"
+      ]
+    },
+    {
+      "id": "f-treasury-office",
+      "sourceElementId": "treasury",
+      "targetElementId": "office",
+      "type": "dependency",
+      "label": "pays for contracts",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "economy"
+      ]
+    },
+    {
+      "id": "f-crew-schedule",
+      "sourceElementId": "crew",
+      "targetElementId": "schedule",
+      "type": "dependency",
+      "label": "overlap costs $2M/period",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "economy"
+      ]
+    },
+    {
+      "id": "f-opponent-board",
+      "sourceElementId": "opponent",
+      "targetElementId": "pegboard",
+      "type": "relationship",
+      "label": "contact costs $1M",
+      "properties": {
+        "toll": "$1M per distinct contact"
+      },
+      "intent": [
+        "Touching the opposition's normal route pays them a toll \u2014 the network is shared space."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "f-board-period",
+      "sourceElementId": "pegboard",
+      "targetElementId": "period",
+      "type": "loop",
+      "label": "period ends",
+      "properties": {},
+      "intent": [
+        "The construction loop: each period resolves its scheduled actions, then the marker moves on."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/party-games \u2014 src/games/subway/ (RULES.md v0.5.1, config.ts, table.tsx, GameView.tsx)",
+    "asOf": "2026-09-06",
+    "players": 2,
+    "layout": "mirrors the implemented tabletop world: opponent edge top, schedule under it, office | pegboard | logbook, your edge in front",
+    "complexity": "heavy"
+  }
+}
