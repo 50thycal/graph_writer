@@ -1,0 +1,682 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-trading-pipeline",
+  "name": "Kalshi Bot \u2014 Trading Pipeline",
+  "description": "How one cycle turns exchange data into a paper, live or twin position \u2014 and what stops it.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "kalshi",
+      "type": "external-system",
+      "name": "Kalshi exchange",
+      "transform": {
+        "x": 60,
+        "y": 156.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "markets, order books, trades"
+      },
+      "intent": [
+        "Order books are resting bids only \u2014 the YES ask is derived as 100 \u2212 best NO bid."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "config",
+      "type": "service",
+      "name": "Fail-closed config",
+      "transform": {
+        "x": 60,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Settings, credentials, book/variant specs, risk caps",
+        "repository": "kalshi_bot/config.py"
+      },
+      "intent": [
+        "Bad config means the worker does nothing trade-like, rather than proceeding on defaults.",
+        "Every book's universe and knobs are parsed and validated here before a cycle runs."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "client",
+      "type": "service",
+      "name": "Kalshi client",
+      "transform": {
+        "x": 470,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "RSA-PSS signing, retries, fail-closed auth",
+        "repository": "kalshi_bot/kalshi/"
+      },
+      "intent": [
+        "Single choke point for exchange credentials."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "scanner",
+      "type": "service",
+      "name": "Scanner",
+      "transform": {
+        "x": 880,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Fetch, compute liquidity metrics, score deterministically",
+        "repository": "kalshi_bot/scanner/"
+      },
+      "intent": [
+        "A fetch failure is recorded as a failure \u2014 never inferred as an empty universe."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "db-market",
+      "type": "database",
+      "name": "Market record",
+      "transform": {
+        "x": 880,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "markets, snapshots, order books, signals, candidate ticks"
+      },
+      "intent": [
+        "The tape every replay and backtest is graded against."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "books",
+      "type": "service",
+      "name": "Strategy books",
+      "transform": {
+        "x": 1290,
+        "y": 308.0,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "families": "mmsell, theta, weather, freeze, pin15, tfav, wcprop, xgame",
+        "repository": "kalshi_bot/<book>/"
+      },
+      "intent": [
+        "Parallel tags against the same tape, so P&L is comparable head-to-head.",
+        "A book is a question, not a product: proving one is \u2212EV is a win."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "strategy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "universe",
+      "type": "concept",
+      "name": "Universe filter",
+      "transform": {
+        "x": 1290,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "filters": "only= / skip= (raw tickers), mtype= / mode= / xmtype= (taxonomy)"
+      },
+      "intent": [
+        "A series with no taxonomy entry is admitted by NO allowlist filter \u2014 classification debt shows up as exclusion."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "candidate",
+      "type": "concept",
+      "name": "Candidate",
+      "transform": {
+        "x": 1700,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "dataType": "market \u00d7 book \u00d7 cycle, with the entry rule's edge attached"
+      },
+      "intent": [
+        "The one object paper, live and twin all share."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "obs",
+      "type": "service",
+      "name": "Evidence funnel",
+      "transform": {
+        "x": 1700,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Names the stage where a book's count first hit zero",
+        "repository": "kalshi_bot/obs/funnel.py"
+      },
+      "intent": [
+        "Distinguishes 'saw no markets' from 'was never asked' without reading raw logs."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "risk",
+      "type": "service",
+      "name": "Risk manager",
+      "transform": {
+        "x": 2110,
+        "y": 650.0,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "gates": "kill switch, mode, balance, spread, liquidity, closes-soon, per-market + total exposure, daily loss"
+      },
+      "intent": [
+        "Fail-closed: refuses on any doubt.",
+        "Never weakened to make a task easier."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "paper",
+      "type": "service",
+      "name": "Paper engine",
+      "transform": {
+        "x": 2520,
+        "y": 878.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Simulate at the real quote, model fees, manage exits, settle 0/100"
+      },
+      "intent": [
+        "Edge is measured against the price actually paid, so the spread is netted out.",
+        "Its one structural lie: it assumes a resting maker order always fills."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "live",
+      "type": "service",
+      "name": "Live executor",
+      "transform": {
+        "x": 2520,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "requires": "BOT_MODE=live + KILL_SWITCH=false + tag on LIVE_STRATEGIES"
+      },
+      "intent": [
+        "Three independent conditions, plus a recorded arming \u2014 never one flag."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "real-money"
+      ],
+      "locked": false
+    },
+    {
+      "id": "twin",
+      "type": "service",
+      "name": "Paper twin",
+      "transform": {
+        "x": 2520,
+        "y": 726.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Fresh paper book on live parameters, started at the same instant"
+      },
+      "intent": [
+        "Controls sample, regime, sizing and concurrency so the only difference left is the fill assumption."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "db-trading",
+      "type": "database",
+      "name": "Trading record",
+      "transform": {
+        "x": 2930,
+        "y": 726.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "paper_trades, positions, live_orders, fills, twin + parity events"
+      },
+      "intent": [
+        "Paper and live sit side by side, so the twin comparison is a query."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "orders",
+      "type": "external-system",
+      "name": "Kalshi order entry",
+      "transform": {
+        "x": 2930,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "mirrorOf": "kalshi"
+      },
+      "intent": [
+        "Mirror of the exchange so the money-spending edge stays legible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system",
+        "mirror",
+        "real-money"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "p-kalshi-client",
+      "sourceElementId": "kalshi",
+      "targetElementId": "client",
+      "type": "dependency",
+      "label": "signed REST",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "p-config-client",
+      "sourceElementId": "config",
+      "targetElementId": "client",
+      "type": "dependency",
+      "label": "boot or exit",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "p-client-scanner",
+      "sourceElementId": "client",
+      "targetElementId": "scanner",
+      "type": "flow",
+      "label": "markets + books",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-scanner-db",
+      "sourceElementId": "scanner",
+      "targetElementId": "db-market",
+      "type": "flow",
+      "label": "snapshots + signals",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-scanner-universe",
+      "sourceElementId": "scanner",
+      "targetElementId": "universe",
+      "type": "flow",
+      "label": "scored markets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-books-universe",
+      "sourceElementId": "books",
+      "targetElementId": "universe",
+      "type": "dependency",
+      "label": "declares universe",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-universe-candidate",
+      "sourceElementId": "universe",
+      "targetElementId": "candidate",
+      "type": "flow",
+      "label": "eligible markets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-books-candidate",
+      "sourceElementId": "books",
+      "targetElementId": "candidate",
+      "type": "flow",
+      "label": "entry rule + edge",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-books-obs",
+      "sourceElementId": "books",
+      "targetElementId": "obs",
+      "type": "flow",
+      "label": "funnel line",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "p-candidate-risk",
+      "sourceElementId": "candidate",
+      "targetElementId": "risk",
+      "type": "flow",
+      "label": "order intent",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-risk-paper",
+      "sourceElementId": "risk",
+      "targetElementId": "paper",
+      "type": "flow",
+      "label": "paper gates",
+      "properties": {
+        "skipped": "kill switch, mode, real balance"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-risk-live",
+      "sourceElementId": "risk",
+      "targetElementId": "live",
+      "type": "flow",
+      "label": "all gates",
+      "properties": {},
+      "intent": [
+        "The gate that stops live is recorded, not just enforced \u2014 it is evidence for the parity study."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    },
+    {
+      "id": "p-live-twin",
+      "sourceElementId": "live",
+      "targetElementId": "twin",
+      "type": "relationship",
+      "label": "armed together",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "validation"
+      ]
+    },
+    {
+      "id": "p-paper-db",
+      "sourceElementId": "paper",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "paper trades",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-live-db",
+      "sourceElementId": "live",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "orders + fills",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-twin-db",
+      "sourceElementId": "twin",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "parity events",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "p-live-orders",
+      "sourceElementId": "live",
+      "targetElementId": "orders",
+      "type": "flow",
+      "label": "real orders",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "subsystem",
+    "parentMap": "kalshi-bot-master.json"
+  }
+}

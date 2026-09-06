@@ -1,0 +1,848 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-experiment-os",
+  "name": "Kalshi Bot \u2014 Experiment OS",
+  "description": "How a question becomes a tag that may trade, and how evidence decides whether it keeps trading.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "experiment",
+      "type": "service",
+      "name": "Experiment",
+      "transform": {
+        "x": 60,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Asks exactly one question"
+      },
+      "intent": [
+        "The central domain object. Everything else hangs off it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "version",
+      "type": "service",
+      "name": "Version",
+      "transform": {
+        "x": 470,
+        "y": 270.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Freezes the scientific contract: rules, universe, risk envelope, declared arm set"
+      },
+      "intent": [
+        "A changed question is a NEW Version, never an edited one.",
+        "Narrowing a frozen arm set or risk envelope is a successor Version (DEC-004)."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "epoch",
+      "type": "service",
+      "name": "Epoch",
+      "transform": {
+        "x": 470,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "A changed world under the same question \u2014 taxonomy expansion, candidate-population change"
+      },
+      "intent": [
+        "Evidence never pools across a boundary Experiment OS declares non-poolable."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "deployment",
+      "type": "service",
+      "name": "Deployment + arm",
+      "transform": {
+        "x": 880,
+        "y": 384.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Binds one arm of a Version to a strategy tag"
+      },
+      "intent": [
+        "The only thing that grants a tag permission to trade at all."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "tag",
+      "type": "concept",
+      "name": "Strategy tag",
+      "transform": {
+        "x": 1290,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "example": "one tag per arm; live and twin tags are separate"
+      },
+      "intent": [
+        "A tag not registered to an active deployment arm cannot write."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "enforcement",
+      "type": "service",
+      "name": "Enforcement (NEW_ONLY)",
+      "transform": {
+        "x": 1290,
+        "y": 612.0,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "since": "2026-08-16 cutover prod-new-only",
+        "behavior": "refuse at the write path"
+      },
+      "intent": [
+        "Refused, not warned about.",
+        "Existing books are grandfathered but may not silently gain arms or change rules."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "books",
+      "type": "service",
+      "name": "Books trading under the tag",
+      "transform": {
+        "x": 1700,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "detailMap": "kalshi-bot-trading-pipeline.json"
+      },
+      "intent": [
+        "Paper, live canary or production \u2014 the stage decides which."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "strategy"
+      ],
+      "locked": false
+    },
+    {
+      "id": "evidence",
+      "type": "database",
+      "name": "Evidence",
+      "transform": {
+        "x": 2110,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "paper + live trades, fills, twin parity, funnel counts"
+      },
+      "intent": [
+        "Accumulated per arm and per epoch, never pooled across a broken boundary."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "gate",
+      "type": "human-checkpoint",
+      "name": "Pre-registered gate",
+      "transform": {
+        "x": 2520,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "reviewer": "the designated evaluator",
+        "approvalCriteria": "a recorded verdict on a gate registered before results were seen"
+      },
+      "intent": [
+        "Gates decide promotions, not P&L. HOLD on thin sample is correct.",
+        "Automatic evaluation is allowed; automatic promotion never is."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "gate",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "transition",
+      "type": "service",
+      "name": "Recorded transition",
+      "transform": {
+        "x": 2520,
+        "y": 650.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "The only thing that moves a stage or changes exposure"
+      },
+      "intent": [
+        "Never a side effect of merging code. A dry run authorizes nothing.",
+        "Only a recorded evaluator PASS authorizes it \u2014 a hand-written or stale PASS never does."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "platform",
+      "type": "service",
+      "name": "Platform revision",
+      "transform": {
+        "x": 60,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "scope": "fees, fills, taxonomy, execution, risk, provenance, metric definitions"
+      },
+      "intent": [
+        "A change to shared semantics silently invalidates evidence, so it is recorded like an experiment."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "impact",
+      "type": "concept",
+      "name": "Impact disposition",
+      "transform": {
+        "x": 470,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "blocking"
+      },
+      "intent": [
+        "Every affected active experiment must be dispositioned before the revision activates."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "issue",
+      "type": "service",
+      "name": "Issue",
+      "transform": {
+        "x": 60,
+        "y": 1030.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Durable state for an anomaly, defect, incident or open question"
+      },
+      "intent": [
+        "Routes work to the role that already owns the surface \u2014 there is no fixer role.",
+        "Never changes a lifecycle state, gate or exposure as a side effect."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "role",
+      "type": "concept",
+      "name": "Owning role",
+      "transform": {
+        "x": 470,
+        "y": 1030.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "roles": [
+          "Control Tower",
+          "Research Lab",
+          "Live Ops",
+          "Platform Change Review"
+        ]
+      },
+      "intent": [
+        "Detail: kalshi-bot-control-plane.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-idea",
+      "type": "concept",
+      "name": "IDEA",
+      "transform": {
+        "x": 880,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-probe",
+      "type": "concept",
+      "name": "PROBE",
+      "transform": {
+        "x": 1290,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-paper",
+      "type": "concept",
+      "name": "PAPER",
+      "transform": {
+        "x": 1700,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-canary",
+      "type": "concept",
+      "name": "LIVE_CANARY",
+      "transform": {
+        "x": 2110,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-prod",
+      "type": "concept",
+      "name": "PRODUCTION",
+      "transform": {
+        "x": 2520,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "s-end",
+      "type": "concept",
+      "name": "PAUSED / RETIRED",
+      "transform": {
+        "x": 2930,
+        "y": 1106.0,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "x-exp-version",
+      "sourceElementId": "experiment",
+      "targetElementId": "version",
+      "type": "flow",
+      "label": "freezes a contract",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-exp-epoch",
+      "sourceElementId": "experiment",
+      "targetElementId": "epoch",
+      "type": "flow",
+      "label": "world changed",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-version-dep",
+      "sourceElementId": "version",
+      "targetElementId": "deployment",
+      "type": "flow",
+      "label": "arms one arm",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-epoch-dep",
+      "sourceElementId": "epoch",
+      "targetElementId": "deployment",
+      "type": "dependency",
+      "label": "resets poolability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-dep-tag",
+      "sourceElementId": "deployment",
+      "targetElementId": "tag",
+      "type": "flow",
+      "label": "grants a tag",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-enf-tag",
+      "sourceElementId": "enforcement",
+      "targetElementId": "tag",
+      "type": "dependency",
+      "label": "unregistered \u2192 refused",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "x-tag-books",
+      "sourceElementId": "tag",
+      "targetElementId": "books",
+      "type": "flow",
+      "label": "may trade",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-books-evidence",
+      "sourceElementId": "books",
+      "targetElementId": "evidence",
+      "type": "flow",
+      "label": "trades + parity",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-evidence-gate",
+      "sourceElementId": "evidence",
+      "targetElementId": "gate",
+      "type": "flow",
+      "label": "graded on a cadence",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-gate-transition",
+      "sourceElementId": "gate",
+      "targetElementId": "transition",
+      "type": "flow",
+      "label": "recorded PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-transition-tag",
+      "sourceElementId": "transition",
+      "targetElementId": "enforcement",
+      "type": "loop",
+      "label": "arms / pauses the tag",
+      "properties": {},
+      "intent": [
+        "The loop that closes the system: evidence decides which tags keep trading."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "governance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-transition-stage",
+      "sourceElementId": "transition",
+      "targetElementId": "s-paper",
+      "type": "flow",
+      "label": "moves the stage",
+      "properties": {},
+      "intent": [
+        "Promotion PAPER \u2192 LIVE_CANARY is the transition that costs real money."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-platform-impact",
+      "sourceElementId": "platform",
+      "targetElementId": "impact",
+      "type": "flow",
+      "label": "forces a disposition",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-impact-exp",
+      "sourceElementId": "impact",
+      "targetElementId": "experiment",
+      "type": "dependency",
+      "label": "per affected experiment",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-issue-role",
+      "sourceElementId": "issue",
+      "targetElementId": "role",
+      "type": "flow",
+      "label": "routes work",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "x-idea-probe",
+      "sourceElementId": "s-idea",
+      "targetElementId": "s-probe",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-probe-paper",
+      "sourceElementId": "s-probe",
+      "targetElementId": "s-paper",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-paper-canary",
+      "sourceElementId": "s-paper",
+      "targetElementId": "s-canary",
+      "type": "flow",
+      "label": "gate PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-canary-prod",
+      "sourceElementId": "s-canary",
+      "targetElementId": "s-prod",
+      "type": "flow",
+      "label": "gate PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "x-prod-end",
+      "sourceElementId": "s-prod",
+      "targetElementId": "s-end",
+      "type": "flow",
+      "label": "any stage",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "subsystem",
+    "parentMap": "kalshi-bot-master.json",
+    "enforcement": "NEW_ONLY since 2026-08-16"
+  }
+}

@@ -1,0 +1,662 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-control-plane",
+  "name": "Kalshi Bot \u2014 Operator & Agent Control Plane",
+  "description": "Every route into a system whose agent sandbox cannot reach production: a read path, a code path, and one audited write path.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "operator",
+      "type": "user",
+      "name": "Operator",
+      "transform": {
+        "x": 60,
+        "y": 953.9999999999999,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "owner of the real money",
+        "permissions": [
+          "arm live",
+          "set env",
+          "confirm exposure increases"
+        ]
+      },
+      "intent": [
+        "The only party that can expand real-money exposure."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false
+    },
+    {
+      "id": "session",
+      "type": "user",
+      "name": "Agent session (Claude)",
+      "transform": {
+        "x": 60,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "research / build / ops",
+        "sandbox": "cannot reach Railway, Postgres or most third-party APIs"
+      },
+      "intent": [
+        "Reads everything through the ops channel; writes only through a PR or the audited envelope."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false
+    },
+    {
+      "id": "roles",
+      "type": "concept",
+      "name": "Session role",
+      "transform": {
+        "x": 60,
+        "y": 346.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "sticky": true,
+        "roles": [
+          "Experiment Control Tower",
+          "Evo Control Tower",
+          "Evo Ticket Workshop",
+          "Platform Change Review",
+          "Research Lab",
+          "Legacy Migration",
+          "Live Ops",
+          "task-specific"
+        ]
+      },
+      "intent": [
+        "An architectural constraint, not documentation: a read-only role that finds a needed write recommends the owning role."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "request",
+      "type": "queue",
+      "name": "ops/request.json",
+      "transform": {
+        "x": 470,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "topic": "`ops` branch",
+        "types": [
+          "xos",
+          "db",
+          "logs",
+          "script",
+          "env",
+          "noop"
+        ],
+        "idRequired": true
+      },
+      "intent": [
+        "Shared and single-slot: concurrent sessions overwrite each other, so always use a unique id."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false
+    },
+    {
+      "id": "runner",
+      "type": "service",
+      "name": "GitHub Actions runner",
+      "transform": {
+        "x": 880,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "executes": "default-branch code only"
+      },
+      "intent": [
+        "A change on a feature branch cannot be exercised against production until it merges."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "analyses",
+      "type": "service",
+      "name": "Read-only analyses",
+      "transform": {
+        "x": 1290,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "repository": "scripts/",
+        "runtime": "stdlib + psycopg only"
+      },
+      "intent": [
+        "Stdlib-only because the runner cannot import the worker package."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pg-ro",
+      "type": "database",
+      "name": "Postgres \u2014 SELECT-only role",
+      "transform": {
+        "x": 1700,
+        "y": 764.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "enforcement": "server-side; no writable path may be added"
+      },
+      "intent": [
+        "The ops channel is read-only against production by design."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "results",
+      "type": "queue",
+      "name": "ops/results/<id>.txt",
+      "transform": {
+        "x": 1290,
+        "y": 726.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "retention": "newest 80 files"
+      },
+      "intent": [
+        "Poll for your own per-id result, not the shared pointer. Budget minutes."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pr",
+      "type": "service",
+      "name": "Pull request",
+      "transform": {
+        "x": 470,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "The handoff \u2014 never chat"
+      },
+      "intent": [
+        "Reviewed change is how a session alters production behavior."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "default-branch",
+      "type": "concept",
+      "name": "Default branch",
+      "transform": {
+        "x": 880,
+        "y": 270.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "What the runner executes and what Railway deploys \u2014 one code path, no drift."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "envelope",
+      "type": "queue",
+      "name": "Production-write envelope",
+      "transform": {
+        "x": 470,
+        "y": 764.0,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "transports": [
+          "issues",
+          "platform revisions",
+          "experiment lifecycle"
+        ],
+        "delivery": "exactly-once"
+      },
+      "intent": [
+        "Three disjoint transports on purpose \u2014 never one shared vocabulary (DEC-005).",
+        "Strictly validated, consumed once at boot against a durable receipt."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "worker-boot",
+      "type": "service",
+      "name": "Worker boot",
+      "transform": {
+        "x": 880,
+        "y": 840.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Only the worker holds a writable DATABASE_URL, so registering a Version is necessarily an operator action."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "xos",
+      "type": "service",
+      "name": "Experiment OS write",
+      "transform": {
+        "x": 1290,
+        "y": 878.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "detailMap": "kalshi-bot-experiment-os.json"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "dashboards",
+      "type": "service",
+      "name": "Read-only dashboards",
+      "transform": {
+        "x": 1700,
+        "y": 953.9999999999999,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "repository": "kalshi_bot/livedash/, dashboard/"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-op-session",
+      "sourceElementId": "operator",
+      "targetElementId": "session",
+      "type": "flow",
+      "label": "names the role",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-session-roles",
+      "sourceElementId": "session",
+      "targetElementId": "roles",
+      "type": "dependency",
+      "label": "bounds writes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-session-request",
+      "sourceElementId": "session",
+      "targetElementId": "request",
+      "type": "flow",
+      "label": "pushes a request",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-request-runner",
+      "sourceElementId": "request",
+      "targetElementId": "runner",
+      "type": "flow",
+      "label": "fires a run",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-runner-analyses",
+      "sourceElementId": "runner",
+      "targetElementId": "analyses",
+      "type": "flow",
+      "label": "runs default-branch code",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-analyses-pg",
+      "sourceElementId": "analyses",
+      "targetElementId": "pg-ro",
+      "type": "dependency",
+      "label": "SELECT only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "c-pg-results",
+      "sourceElementId": "pg-ro",
+      "targetElementId": "results",
+      "type": "flow",
+      "label": "rows out",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-results-session",
+      "sourceElementId": "results",
+      "targetElementId": "session",
+      "type": "loop",
+      "label": "committed back",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-session-pr",
+      "sourceElementId": "session",
+      "targetElementId": "pr",
+      "type": "flow",
+      "label": "opens",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-pr-default",
+      "sourceElementId": "pr",
+      "targetElementId": "default-branch",
+      "type": "flow",
+      "label": "merged",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-default-runner",
+      "sourceElementId": "default-branch",
+      "targetElementId": "runner",
+      "type": "dependency",
+      "label": "is what runs",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-op-envelope",
+      "sourceElementId": "operator",
+      "targetElementId": "envelope",
+      "type": "flow",
+      "label": "sets the env var",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "c-session-envelope",
+      "sourceElementId": "session",
+      "targetElementId": "envelope",
+      "type": "dependency",
+      "label": "drafts, batched",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-envelope-boot",
+      "sourceElementId": "envelope",
+      "targetElementId": "worker-boot",
+      "type": "flow",
+      "label": "consumed once",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-boot-xos",
+      "sourceElementId": "worker-boot",
+      "targetElementId": "xos",
+      "type": "flow",
+      "label": "applies the write",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-pg-dash",
+      "sourceElementId": "pg-ro",
+      "targetElementId": "dashboards",
+      "type": "flow",
+      "label": "read-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "c-dash-op",
+      "sourceElementId": "dashboards",
+      "targetElementId": "operator",
+      "type": "flow",
+      "label": "live state",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "subsystem",
+    "parentMap": "kalshi-bot-master.json"
+  }
+}
