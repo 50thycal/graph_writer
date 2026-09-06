@@ -1,0 +1,683 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-master",
+  "name": "Kalshi Bot \u2014 Master Map",
+  "description": "Top-level map of the Kalshi trading system. Each detail node names the subsystem map that expands it.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "kalshi",
+      "type": "external-system",
+      "name": "Kalshi exchange",
+      "transform": {
+        "x": 60,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "Kalshi",
+        "interface": "/trade-api/v2 \u2014 markets, books, orders, settlements"
+      },
+      "intent": [
+        "The venue. Everything else in this diagram exists to decide what to send it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "feeds",
+      "type": "external-system",
+      "name": "Market & weather data feeds",
+      "transform": {
+        "x": 60,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "NWS, Open-Meteo, Polymarket, Coinbase",
+        "interface": "public HTTP, no auth"
+      },
+      "intent": [
+        "Detail: kalshi-bot-research-data.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "llm",
+      "type": "external-system",
+      "name": "LLM APIs",
+      "transform": {
+        "x": 60,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "model vendors",
+        "interface": "spend-capped"
+      },
+      "intent": [
+        "No LLM sits in the trading decision path \u2014 cognition is for the evo fleet only."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "main-worker",
+      "type": "service",
+      "name": "Railway main worker",
+      "transform": {
+        "x": 470,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "One cycle loop: scan, trade, collect, run Experiment OS boot hooks",
+        "runtime": "BOT_MODE=live"
+      },
+      "intent": [
+        "The only writer to production data."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "runtime"
+      ],
+      "locked": false
+    },
+    {
+      "id": "evo-worker",
+      "type": "service",
+      "name": "Railway evo worker",
+      "transform": {
+        "x": 470,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Hosts the agent fleet",
+        "runtime": "BOT_MODE=evo"
+      },
+      "intent": [
+        "Separate worker so agent cognition can never stall the trading cycle."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "runtime"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pipeline",
+      "type": "service",
+      "name": "Trading pipeline",
+      "transform": {
+        "x": 880,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "scan \u2192 candidate \u2192 risk \u2192 paper / live / twin",
+        "detailMap": "kalshi-bot-trading-pipeline.json"
+      },
+      "intent": [
+        "Where every order intent is born and gated."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "collectors",
+      "type": "service",
+      "name": "Research collectors",
+      "transform": {
+        "x": 880,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Ride-along data collection for books that do not exist yet",
+        "detailMap": "kalshi-bot-research-data.json"
+      },
+      "intent": [
+        "Collection is decoupled from trading: the dataset accumulates before any book trades on it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "fleet",
+      "type": "service",
+      "name": "Evolutionary agent fleet",
+      "transform": {
+        "x": 880,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "LLM agents that propose and run their own books under budget",
+        "detailMap": "kalshi-bot-evo-fleet.json"
+      },
+      "intent": [
+        "Agents get no exemption from registration, gates or the arming ritual."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "orders",
+      "type": "external-system",
+      "name": "Kalshi order entry",
+      "transform": {
+        "x": 1290,
+        "y": 80,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "Kalshi",
+        "mirrorOf": "kalshi"
+      },
+      "intent": [
+        "Mirror of the exchange, drawn separately so the money-spending edge is legible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system",
+        "mirror",
+        "real-money"
+      ],
+      "locked": false
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "name": "Postgres \u2014 single writer",
+      "transform": {
+        "x": 1290,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "technology": "Postgres (Railway)",
+        "data": "market record, trading record, research inputs, Experiment OS schema"
+      },
+      "intent": [
+        "Every path into it that is not the worker is read-only by construction."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "dashboards",
+      "type": "service",
+      "name": "Read-only dashboards",
+      "transform": {
+        "x": 1700,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Operator views of books, positions and live state"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "observability"
+      ],
+      "locked": false
+    },
+    {
+      "id": "xos",
+      "type": "service",
+      "name": "Experiment OS",
+      "transform": {
+        "x": 1290,
+        "y": 1030.0,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Lifecycle, gates, enforcement, platform revisions, issues",
+        "detailMap": "kalshi-bot-experiment-os.json"
+      },
+      "intent": [
+        "Canonical for experiment truth. Docs and chat are not authoritative once this can answer the same question."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "operator",
+      "type": "user",
+      "name": "Operator + agent sessions",
+      "transform": {
+        "x": 2110,
+        "y": 384.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "owner of the real money and of every write that is not the worker's"
+      },
+      "intent": [
+        "North star: $100/month realized profit.",
+        "Detail: kalshi-bot-control-plane.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false
+    },
+    {
+      "id": "ops",
+      "type": "queue",
+      "name": "Ops channel",
+      "transform": {
+        "x": 2110,
+        "y": 935.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "topic": "`ops` branch \u2192 GitHub Actions \u2192 read-only Postgres",
+        "detailMap": "kalshi-bot-control-plane.json"
+      },
+      "intent": [
+        "The agent sandbox cannot reach Railway or Postgres; this is the whole route in."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue",
+        "control-plane"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "m-kalshi-worker",
+      "sourceElementId": "kalshi",
+      "targetElementId": "main-worker",
+      "type": "flow",
+      "label": "market data",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-feeds-collect",
+      "sourceElementId": "feeds",
+      "targetElementId": "collectors",
+      "type": "flow",
+      "label": "forecasts, tapes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-llm-evo",
+      "sourceElementId": "llm",
+      "targetElementId": "evo-worker",
+      "type": "dependency",
+      "label": "cognition",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "dependency"
+      ]
+    },
+    {
+      "id": "m-worker-pipeline",
+      "sourceElementId": "main-worker",
+      "targetElementId": "pipeline",
+      "type": "flow",
+      "label": "each cycle",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-worker-collect",
+      "sourceElementId": "main-worker",
+      "targetElementId": "collectors",
+      "type": "flow",
+      "label": "ride-along",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-evo-fleet",
+      "sourceElementId": "evo-worker",
+      "targetElementId": "fleet",
+      "type": "flow",
+      "label": "hosts",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-pipeline-orders",
+      "sourceElementId": "pipeline",
+      "targetElementId": "orders",
+      "type": "flow",
+      "label": "real orders",
+      "properties": {},
+      "intent": [
+        "The only edge here that spends money."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    },
+    {
+      "id": "m-pipeline-pg",
+      "sourceElementId": "pipeline",
+      "targetElementId": "postgres",
+      "type": "flow",
+      "label": "trades + positions",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-collect-pg",
+      "sourceElementId": "collectors",
+      "targetElementId": "postgres",
+      "type": "flow",
+      "label": "datasets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-fleet-pg",
+      "sourceElementId": "fleet",
+      "targetElementId": "postgres",
+      "type": "dependency",
+      "label": "replay reads",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "dependency"
+      ]
+    },
+    {
+      "id": "m-pg-xos",
+      "sourceElementId": "postgres",
+      "targetElementId": "xos",
+      "type": "flow",
+      "label": "evidence",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-xos-pipeline",
+      "sourceElementId": "xos",
+      "targetElementId": "pipeline",
+      "type": "loop",
+      "label": "promote / pause / retire",
+      "properties": {},
+      "intent": [
+        "The feedback loop the whole system is built around: evidence decides which books keep running."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "governance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "m-fleet-xos",
+      "sourceElementId": "fleet",
+      "targetElementId": "xos",
+      "type": "dependency",
+      "label": "books register here",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    },
+    {
+      "id": "m-pg-dash",
+      "sourceElementId": "postgres",
+      "targetElementId": "dashboards",
+      "type": "flow",
+      "label": "read-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-dash-op",
+      "sourceElementId": "dashboards",
+      "targetElementId": "operator",
+      "type": "flow",
+      "label": "what it is doing",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-op-ops",
+      "sourceElementId": "operator",
+      "targetElementId": "ops",
+      "type": "flow",
+      "label": "requests",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-ops-pg",
+      "sourceElementId": "ops",
+      "targetElementId": "postgres",
+      "type": "dependency",
+      "label": "SELECT-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "control-plane"
+      ]
+    },
+    {
+      "id": "m-ops-xos",
+      "sourceElementId": "ops",
+      "targetElementId": "xos",
+      "type": "flow",
+      "label": "write envelope",
+      "properties": {},
+      "intent": [
+        "Consumed once at the worker's next boot \u2014 agents never write directly."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "control-plane",
+        "governance"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "master \u2014 subsystems only",
+    "detailMaps": [
+      "kalshi-bot-trading-pipeline.json",
+      "kalshi-bot-experiment-os.json",
+      "kalshi-bot-research-data.json",
+      "kalshi-bot-control-plane.json",
+      "kalshi-bot-evo-fleet.json"
+    ]
+  }
+}

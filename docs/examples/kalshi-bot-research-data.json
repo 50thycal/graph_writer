@@ -1,0 +1,998 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-research-data",
+  "name": "Kalshi Bot \u2014 Research & Data Collection",
+  "description": "Ride-along collection: external feeds become datasets, datasets become graded verdicts, and only a passing verdict becomes a book.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "nws",
+      "type": "external-system",
+      "name": "NWS",
+      "transform": {
+        "x": 60,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "daily forecasts, station observations"
+      },
+      "intent": [
+        "Free, needs a user agent. Also the settlement source for the temperature markets."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "openmeteo",
+      "type": "external-system",
+      "name": "Open-Meteo",
+      "transform": {
+        "x": 60,
+        "y": 270.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "HRRR point forecast, multi-model ensembles"
+      },
+      "intent": [
+        "Ensembles give an empirical P(bucket) \u2014 the market prices a distribution, not a point."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "polymarket",
+      "type": "external-system",
+      "name": "Polymarket",
+      "transform": {
+        "x": 60,
+        "y": 118.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "Gamma + data API, no auth"
+      },
+      "intent": [
+        "Reference prices only. Station must match or it is a different bet, not a mispricing."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "coinbase",
+      "type": "external-system",
+      "name": "Crypto spot",
+      "transform": {
+        "x": 60,
+        "y": 1106.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "1-minute BTC/ETH candles"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "kalshi-hist",
+      "type": "external-system",
+      "name": "Kalshi archives + tape",
+      "transform": {
+        "x": 60,
+        "y": 688.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "candlesticks, /historical, /markets/trades"
+      },
+      "intent": [
+        "The only way to get sample before live collection accumulates."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "weather-collect",
+      "type": "service",
+      "name": "Weather collector",
+      "transform": {
+        "x": 470,
+        "y": 346.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "forecasts, HRRR, intraday observations, ensembles, bucket ladders, settlements"
+      },
+      "intent": [
+        "Throttled and fail-soft: a provider outage skips the weather books and disturbs nothing else."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pm-collect",
+      "type": "service",
+      "name": "Polymarket collector",
+      "transform": {
+        "x": 470,
+        "y": 156.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "theta-collect",
+      "type": "service",
+      "name": "Crypto ladder collector",
+      "transform": {
+        "x": 470,
+        "y": 1068.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "rolling spot window + near-settlement ladder snapshots with the model probability"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "xgame-collect",
+      "type": "service",
+      "name": "Cross-venue tape collector",
+      "transform": {
+        "x": 470,
+        "y": 764.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "matched Kalshi/Polymarket game markets, both trade tapes"
+      },
+      "intent": [
+        "Collect only \u2014 no trading. Precision over recall: ambiguous matches are dropped."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "backfill",
+      "type": "service",
+      "name": "Kalshi history backfill",
+      "transform": {
+        "x": 470,
+        "y": 612.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "bounded": "a chunk per cycle, newest settlements first"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "t-weather",
+      "type": "database",
+      "name": "weather_* tables",
+      "transform": {
+        "x": 880,
+        "y": 346.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "forecasts, observations, ensembles, bucket snapshots, settlements"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "t-poly",
+      "type": "database",
+      "name": "polymarket_snapshots",
+      "transform": {
+        "x": 880,
+        "y": 194.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Kept apart from the Kalshi tables so provenance is never ambiguous."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "t-crypto",
+      "type": "database",
+      "name": "crypto spot + ladders",
+      "transform": {
+        "x": 880,
+        "y": 992.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "t-game",
+      "type": "database",
+      "name": "game matches + tapes",
+      "transform": {
+        "x": 880,
+        "y": 726.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "t-backfill",
+      "type": "database",
+      "name": "backfill_weather_*",
+      "transform": {
+        "x": 880,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Separate from live-collected tables: an analysis always knows whether a price was observed or reconstructed."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "outcomes",
+      "type": "database",
+      "name": "weather_forecast_outcomes",
+      "transform": {
+        "x": 1290,
+        "y": 308.0,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "one labeled row per intraday cycle, replayed at settlement with no lookahead"
+      },
+      "intent": [
+        "The persisted validation dataset \u2014 skill accumulates instead of being rebuilt ad hoc."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "a-score",
+      "type": "service",
+      "name": "weather_score",
+      "transform": {
+        "x": 1700,
+        "y": 460.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "reports": "P&L by book/window, forecast vs market, consistency"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "a-model",
+      "type": "service",
+      "name": "weather_model_check",
+      "transform": {
+        "x": 1700,
+        "y": 118.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "asks": "does the ensemble beat the market's own implied distribution?"
+      },
+      "intent": [
+        "The gate before any real edge book: Brier / log-loss / cost-aware trades."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "a-sweep",
+      "type": "service",
+      "name": "weather_exit_sweep",
+      "transform": {
+        "x": 1700,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "asks": "should the books hold to settlement?"
+      },
+      "intent": [
+        "Replays every settled trade under a grid of TP/SL exits \u2014 a paired comparison live books would need months to approximate."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "a-theta",
+      "type": "service",
+      "name": "theta study",
+      "transform": {
+        "x": 1700,
+        "y": 878.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "a-xgame",
+      "type": "service",
+      "name": "xgame tape study",
+      "transform": {
+        "x": 1700,
+        "y": 612.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "builds": "~10-second bars from both venues' own timestamps"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "verdict",
+      "type": "concept",
+      "name": "Graded verdict",
+      "transform": {
+        "x": 2110,
+        "y": 422.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Read-only analyses inform a verdict; they never are one."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false
+    },
+    {
+      "id": "gate",
+      "type": "human-checkpoint",
+      "name": "Experiment OS gate",
+      "transform": {
+        "x": 2520,
+        "y": 384.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "detailMap": "kalshi-bot-experiment-os.json"
+      },
+      "intent": [
+        "Only a recorded evaluator PASS turns collected data into a book."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "human-checkpoint"
+      ],
+      "locked": false
+    },
+    {
+      "id": "books",
+      "type": "service",
+      "name": "Strategy books",
+      "transform": {
+        "x": 2520,
+        "y": 536.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "detailMap": "kalshi-bot-trading-pipeline.json"
+      },
+      "intent": [
+        "A dataset earns a book only after it beats the market on settled events."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "r-nws-w",
+      "sourceElementId": "nws",
+      "targetElementId": "weather-collect",
+      "type": "flow",
+      "label": "forecasts + obs",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-om-w",
+      "sourceElementId": "openmeteo",
+      "targetElementId": "weather-collect",
+      "type": "flow",
+      "label": "HRRR + ensembles",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-pm-c",
+      "sourceElementId": "polymarket",
+      "targetElementId": "pm-collect",
+      "type": "flow",
+      "label": "implied prices",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-cb-t",
+      "sourceElementId": "coinbase",
+      "targetElementId": "theta-collect",
+      "type": "flow",
+      "label": "1-min candles",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-hist-x",
+      "sourceElementId": "kalshi-hist",
+      "targetElementId": "xgame-collect",
+      "type": "flow",
+      "label": "trade tapes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-hist-b",
+      "sourceElementId": "kalshi-hist",
+      "targetElementId": "backfill",
+      "type": "flow",
+      "label": "settled history",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-w-t",
+      "sourceElementId": "weather-collect",
+      "targetElementId": "t-weather",
+      "type": "flow",
+      "label": "stored per cycle",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-c-t",
+      "sourceElementId": "pm-collect",
+      "targetElementId": "t-poly",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-t-t",
+      "sourceElementId": "theta-collect",
+      "targetElementId": "t-crypto",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-x-t",
+      "sourceElementId": "xgame-collect",
+      "targetElementId": "t-game",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-b-t",
+      "sourceElementId": "backfill",
+      "targetElementId": "t-backfill",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-tw-out",
+      "sourceElementId": "t-weather",
+      "targetElementId": "outcomes",
+      "type": "flow",
+      "label": "replayed at settlement",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-tb-out",
+      "sourceElementId": "t-backfill",
+      "targetElementId": "outcomes",
+      "type": "dependency",
+      "label": "adds sample",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-tp-out",
+      "sourceElementId": "t-poly",
+      "targetElementId": "outcomes",
+      "type": "dependency",
+      "label": "cross-venue column",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-out-score",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-score",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-out-model",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-model",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-out-sweep",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-sweep",
+      "type": "flow",
+      "label": "price paths",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-tc-theta",
+      "sourceElementId": "t-crypto",
+      "targetElementId": "a-theta",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-tg-x",
+      "sourceElementId": "t-game",
+      "targetElementId": "a-xgame",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-score-v",
+      "sourceElementId": "a-score",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-model-v",
+      "sourceElementId": "a-model",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-sweep-v",
+      "sourceElementId": "a-sweep",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-theta-v",
+      "sourceElementId": "a-theta",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-x-v",
+      "sourceElementId": "a-xgame",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-v-gate",
+      "sourceElementId": "verdict",
+      "targetElementId": "gate",
+      "type": "flow",
+      "label": "read into a gate",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "r-gate-books",
+      "sourceElementId": "gate",
+      "targetElementId": "books",
+      "type": "flow",
+      "label": "only a PASS wires a book",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "subsystem",
+    "parentMap": "kalshi-bot-master.json"
+  }
+}

@@ -1,0 +1,845 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-evo-fleet",
+  "name": "Kalshi Bot \u2014 Evolutionary Agent Fleet",
+  "description": "A population of LLM agents that research, paper-trade and are selected on fitness \u2014 under budget ceilings, with no live-order path.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "llm",
+      "type": "external-system",
+      "name": "LLM APIs",
+      "transform": {
+        "x": 60,
+        "y": 840.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "routing": "aliases, not hardcoded models: routine vs deep",
+        "pricing": "evo_model_prices, never assumed"
+      },
+      "intent": [
+        "No API key means cognition fails closed: listeners, marks and settlements keep running, heartbeats journal as skipped."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "ceilings",
+      "type": "concept",
+      "name": "Cost + token ceilings",
+      "transform": {
+        "x": 60,
+        "y": 688.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "limits": "weekly per-agent spend, per-heartbeat tokens, weekly agent tokens"
+      },
+      "intent": [
+        "Enforced BEFORE each call; exceeding one degrades the heartbeat to no_llm bookkeeping rather than stopping the fleet."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "orchestrator",
+      "type": "service",
+      "name": "Evo orchestrator",
+      "transform": {
+        "x": 470,
+        "y": 4.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "runtime": "BOT_MODE=evo",
+        "population": "target 30 agents, 7-day cohorts"
+      },
+      "intent": [
+        "Computes due heartbeat slots deterministically, so a restart recomputes identical schedules."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "heartbeat",
+      "type": "service",
+      "name": "Heartbeat",
+      "transform": {
+        "x": 880,
+        "y": 688.0,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "shape": "wake \u2192 load \u2192 retrieve \u2192 reason (ONE LLM call) \u2192 act \u2192 journal \u2192 sleep"
+      },
+      "intent": [
+        "One call per heartbeat means no agent-side loop \u2014 runaway recursion is impossible by construction."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "listeners",
+      "type": "service",
+      "name": "Listeners",
+      "transform": {
+        "x": 1290,
+        "y": 650.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Cheap deterministic watchers that trigger a wake between scheduled slots."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "research",
+      "type": "service",
+      "name": "Research reads",
+      "transform": {
+        "x": 1290,
+        "y": 1068.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "reads": "thesis docs, BOOK_REGISTRY, live book performance, peer journals"
+      },
+      "intent": [
+        "What the fleet can see of the operator's own strategies \u2014 the reason a new book must be published to them."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "sandbox",
+      "type": "service",
+      "name": "Strategy sandbox",
+      "transform": {
+        "x": 1290,
+        "y": 840.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Test a rule before spending a paper position on it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "memory",
+      "type": "service",
+      "name": "Memory + peer learning",
+      "transform": {
+        "x": 1290,
+        "y": 346.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Journals are structural and machine-checkable, so quality is scoreable rather than asserted."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "search",
+      "type": "service",
+      "name": "Historical search",
+      "transform": {
+        "x": 1700,
+        "y": 840.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "capability": "search_strategy_space",
+        "namespace": "evo_search_*"
+      },
+      "intent": [
+        "Replay only, no live path, and no lifecycle of its own (DEC-003)."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "xos",
+      "type": "service",
+      "name": "Experiment OS registration",
+      "transform": {
+        "x": 1700,
+        "y": 156.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "detailMap": "kalshi-bot-experiment-os.json"
+      },
+      "intent": [
+        "An agent's tag is refused at the write path like any other unregistered tag."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "paper",
+      "type": "service",
+      "name": "Shared paper engine",
+      "transform": {
+        "x": 1700,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "The same engine the operator books use \u2014 fees, depth-capped entries, settlement at 0/100."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "no-live",
+      "type": "note",
+      "name": "Security boundary",
+      "transform": {
+        "x": 2110,
+        "y": 1695.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Evo runs under BOT_MODE=evo and place_order self-guards on mode + kill switch \u2014 there is no live-order path from the fleet."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "note",
+        "safety"
+      ],
+      "locked": false
+    },
+    {
+      "id": "trades",
+      "type": "database",
+      "name": "Agent trades + opportunities",
+      "transform": {
+        "x": 2110,
+        "y": 308.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "evo paper trades, ex-ante evo_opportunities (declared universes)"
+      },
+      "intent": [
+        "Opportunities are logged BEFORE the fact, so post-hoc redefinition of what an agent could have caught is impossible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "fitness",
+      "type": "service",
+      "name": "Fitness score",
+      "transform": {
+        "x": 2520,
+        "y": 308.0,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "weights": "profit 35 \u00b7 consistency 20 \u00b7 risk 15 \u00b7 evidence 10 \u00b7 forecast 10 \u00b7 adaptive 10"
+      },
+      "intent": [
+        "Bayesian shrinkage toward zero at small n \u2014 lottery outcomes get limited credit.",
+        "Integrity failures are penalised separately from shared-infrastructure failures."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "cohort",
+      "type": "service",
+      "name": "Cohort boundary",
+      "transform": {
+        "x": 2930,
+        "y": 346.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cadence": "every 7 days, birth-anchored",
+        "guard": "unique evo_transitions row \u2014 double-finalize impossible"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "retire",
+      "type": "service",
+      "name": "Retirement \u2014 bottom 30%",
+      "transform": {
+        "x": 3340,
+        "y": 574.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Retired is permanently inactive, never deleted: identity, genomes, trades and the terminal reflection stay queryable."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "reproduce",
+      "type": "service",
+      "name": "Reproduction \u2014 top 30%",
+      "transform": {
+        "x": 3340,
+        "y": 156.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Every 4th cohort swaps one child slot for a wildcard founder, so the population cannot converge on one lineage."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false
+    },
+    {
+      "id": "graveyard",
+      "type": "database",
+      "name": "Graveyard + lineage",
+      "transform": {
+        "x": 3750,
+        "y": 802.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Prior failures are a readable corpus, not deleted history."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "tickets",
+      "type": "queue",
+      "name": "Capability tickets",
+      "transform": {
+        "x": 2110,
+        "y": 783.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "dedup": "token-set similarity \u2014 duplicates become supporters of the existing ticket"
+      },
+      "intent": [
+        "The fleet asks for capabilities it lacks instead of inventing unsafe workarounds."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false
+    },
+    {
+      "id": "triage",
+      "type": "user",
+      "name": "Evo Ticket Workshop",
+      "transform": {
+        "x": 2520,
+        "y": 840.0,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "A human session actions or rejects each request and closes what was already delivered."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "user"
+      ],
+      "locked": false
+    }
+  ],
+  "connections": [
+    {
+      "id": "e-llm-hb",
+      "sourceElementId": "llm",
+      "targetElementId": "heartbeat",
+      "type": "dependency",
+      "label": "one call per beat",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-ceil-hb",
+      "sourceElementId": "ceilings",
+      "targetElementId": "heartbeat",
+      "type": "dependency",
+      "label": "checked first",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "e-orch-hb",
+      "sourceElementId": "orchestrator",
+      "targetElementId": "heartbeat",
+      "type": "flow",
+      "label": "due slots",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-listen-hb",
+      "sourceElementId": "listeners",
+      "targetElementId": "heartbeat",
+      "type": "flow",
+      "label": "triggered wake",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-hb-research",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "research",
+      "type": "flow",
+      "label": "retrieves",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-hb-sandbox",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "sandbox",
+      "type": "flow",
+      "label": "tests a rule",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-hb-memory",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "memory",
+      "type": "flow",
+      "label": "journals",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-sandbox-search",
+      "sourceElementId": "sandbox",
+      "targetElementId": "search",
+      "type": "flow",
+      "label": "bounded replay",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-hb-paper",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "paper",
+      "type": "flow",
+      "label": "opens a position",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-xos-paper",
+      "sourceElementId": "xos",
+      "targetElementId": "paper",
+      "type": "dependency",
+      "label": "tag must be registered",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    },
+    {
+      "id": "e-paper-trades",
+      "sourceElementId": "paper",
+      "targetElementId": "trades",
+      "type": "flow",
+      "label": "trades + marks",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-trades-fitness",
+      "sourceElementId": "trades",
+      "targetElementId": "fitness",
+      "type": "flow",
+      "label": "scored per cohort",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-fitness-cohort",
+      "sourceElementId": "fitness",
+      "targetElementId": "cohort",
+      "type": "flow",
+      "label": "ranked",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-cohort-retire",
+      "sourceElementId": "cohort",
+      "targetElementId": "retire",
+      "type": "flow",
+      "label": "bottom 30%",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-cohort-repro",
+      "sourceElementId": "cohort",
+      "targetElementId": "reproduce",
+      "type": "flow",
+      "label": "top 30%",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-retire-grave",
+      "sourceElementId": "retire",
+      "targetElementId": "graveyard",
+      "type": "flow",
+      "label": "searchable forever",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-repro-orch",
+      "sourceElementId": "reproduce",
+      "targetElementId": "orchestrator",
+      "type": "loop",
+      "label": "children join the next cohort",
+      "properties": {},
+      "intent": [
+        "The evolutionary loop: fitness decides who reproduces, and the population turns over weekly."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-grave-research",
+      "sourceElementId": "graveyard",
+      "targetElementId": "research",
+      "type": "dependency",
+      "label": "prior failures are readable",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-hb-tickets",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "tickets",
+      "type": "flow",
+      "label": "asks for a capability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-tickets-triage",
+      "sourceElementId": "tickets",
+      "targetElementId": "triage",
+      "type": "flow",
+      "label": "reviewed",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "e-triage-research",
+      "sourceElementId": "triage",
+      "targetElementId": "research",
+      "type": "loop",
+      "label": "shipped capability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot \u2014 docs/EVOLUTIONARY_AGENT_SYSTEM.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "subsystem",
+    "parentMap": "kalshi-bot-master.json"
+  }
+}
