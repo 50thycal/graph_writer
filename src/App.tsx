@@ -12,6 +12,8 @@ import { createHandoffBundle, type HandoffBundle } from "./features/export/hando
 import { createReferenceRecords, readReferenceImage, REFERENCE_IMAGE_TYPES } from "./features/import/reference-image";
 import { formatStudioImportError } from "./features/import/import-errors";
 import { ancestryOf, childCounts, connectionsAtLevel, elementsAtLevel, levelCount, reparentElement, resolveFocus, type LevelFocus } from "./studio/levels/levels";
+import { ErrorBanner } from "./features/errors/ErrorBanner";
+import { reportError } from "./features/errors/error-log";
 
 const projectRepository = new IndexedDbProjectRepository();
 const AUTO_OPEN_INSPECTOR_KEY = "graph-writer:auto-open-inspector";
@@ -48,26 +50,33 @@ interface LevelOverlayState {
 
 const LevelOverlayContext = createContext<LevelOverlayState>({ counts: new Map(), zoomInto: () => undefined });
 
+function computeBadges(editor: Editor, counts: Map<string, number>) {
+  const selectedId = editor.getOnlySelectedShape()?.id;
+  return editor.getCurrentPageShapes().flatMap((shape) => {
+    if (shape.type !== "geo") return [];
+    const element = shape.meta[STUDIO_META_KEY] as StudioElement | undefined;
+    if (!element) return [];
+    const count = counts.get(element.id) ?? 0;
+    const selected = shape.id === selectedId;
+    if (!count && !selected) return [];
+    const bounds = editor.getShapePageBounds(shape);
+    if (!bounds) return [];
+    const point = editor.pageToViewport({ x: bounds.minX, y: bounds.minY });
+    return [{ id: element.id, x: point.x, y: point.y, count, selected }];
+  });
+}
+
 /** Floating "N inside" pills above objects that own a detail level, plus a "zoom in" pill on the selection. */
 function LevelBadges() {
   const editor = useEditor();
   const { counts, zoomInto } = useContext(LevelOverlayContext);
   const badges = useValue("level-badges", () => {
-    const selectedId = editor.getOnlySelectedShape()?.id;
-    return editor.getCurrentPageShapes().flatMap((shape) => {
-      if (shape.type !== "geo") return [];
-      const element = shape.meta[STUDIO_META_KEY] as StudioElement | undefined;
-      if (!element) return [];
-      const count = counts.get(element.id) ?? 0;
-      const selected = shape.id === selectedId;
-      if (!count && !selected) return [];
-      const bounds = editor.getShapePageBounds(shape);
-      if (!bounds) return [];
-      const point = editor.pageToViewport({ x: bounds.minX, y: bounds.minY });
-      return [{ id: element.id, x: point.x, y: point.y, count, selected }];
-    });
+    try {
+      return computeBadges(editor, counts);
+    } catch {
+      return [];
+    }
   }, [editor, counts]);
-
   return <div className="level-badges">{badges.map((badge) => <button
     key={badge.id}
     type="button"
@@ -149,6 +158,20 @@ function addToEditor(editor: Editor, element: StudioElement, assets: StudioAsset
     },
     meta: { [STUDIO_META_KEY]: JSON.parse(JSON.stringify(record.meta[STUDIO_META_KEY])) },
   });
+}
+
+/**
+ * Reading the canvas during render is only safe while that canvas is mounted. Changing
+ * level swaps the whole editor, so a render can briefly still hold the previous one;
+ * a throw there would take the entire app down with it.
+ */
+function readShapesSafely(editor: Editor | null): TldrawShapeRecord[] {
+  if (!editor) return [];
+  try {
+    return readShapes(editor);
+  } catch {
+    return [];
+  }
 }
 
 function readShapes(editor: Editor): TldrawShapeRecord[] {
@@ -332,6 +355,7 @@ export function App() {
   const referenceImageInput = useRef<HTMLInputElement>(null);
   const referenceImportLocked = useRef(false);
   const activeProjectRef = useRef<StudioProject | null>(null);
+  const liveEditor = useRef<Editor | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const stopAutosave = useRef<(() => void) | undefined>(undefined);
   const hydrating = useRef(false);
@@ -353,6 +377,10 @@ export function App() {
 
   const activateProject = useCallback((project: StudioProject) => {
     const copy = structuredClone(project);
+    window.clearTimeout(saveTimer.current);
+    stopAutosave.current?.();
+    stopAutosave.current = undefined;
+    liveEditor.current = null;
     activeProjectRef.current = copy;
     setActiveProject(copy);
     setEditor(null);
@@ -368,7 +396,10 @@ export function App() {
 
   const refreshProjects = useCallback(async () => {
     try {
-      const storedProjects = await projectRepository.listProjects();
+      const storedProjects = await projectRepository.listProjects().catch((error) => {
+        reportError(error, "Could not open stored projects");
+        return [] as StudioProject[];
+      });
       setProjects(storedProjects);
       const routeId = routedProjectId();
       const routedProject = routeId ? storedProjects.find((project) => project.id === routeId) : undefined;
@@ -398,24 +429,43 @@ export function App() {
   useEffect(() => editor?.store.listen(() => setRevision((value) => value + 1), { scope: "all" }), [editor]);
 
   const scheduleAutosave = useCallback((instance: Editor) => {
-      if (hydrating.current) return;
+      if (hydrating.current || liveEditor.current !== instance) return;
       window.clearTimeout(saveTimer.current);
       setSaveStatus("saving");
+      const scheduledFor = { projectId: activeProjectRef.current?.id, focus: focusRef.current };
       saveTimer.current = window.setTimeout(() => {
         const current = activeProjectRef.current;
         if (!current) return;
-        const document = readDocument(instance, current);
-        const updated = { ...current, name: document.name, mode: document.mode, updatedAt: document.updatedAt, document };
-        void projectRepository.saveProject(updated)
-          .then(() => { rememberProject(updated); setSaveStatus("saved"); })
-          .catch(() => setSaveStatus("error"));
+        // The canvas this save was queued from may already be gone — a level change, a
+        // different project. Writing its shapes now would overwrite the wrong document.
+        if (liveEditor.current !== instance) return;
+        if (current.id !== scheduledFor.projectId || focusRef.current !== scheduledFor.focus) return;
+        try {
+          const document = readDocument(instance, current);
+          const updated = { ...current, name: document.name, mode: document.mode, updatedAt: document.updatedAt, document };
+          void projectRepository.saveProject(updated)
+            .then(() => { rememberProject(updated); setSaveStatus("saved"); })
+            .catch((error) => { setSaveStatus("error"); reportError(error, "Could not save this project"); });
+        } catch (error) {
+          // Reading the canvas back into the document failed. Report it and keep the
+          // last good save rather than throwing out of the timer and killing the page.
+          setSaveStatus("error");
+          reportError(error, "Could not read the canvas");
+        }
       }, 450);
   }, [readDocument, rememberProject]);
 
   const attachAutosave = useCallback((instance: Editor) => {
     stopAutosave.current?.();
+    liveEditor.current = instance;
     stopAutosave.current = instance.store.listen(() => scheduleAutosave(instance), { scope: "document" });
   }, [scheduleAutosave]);
+
+  /** Forget the mounted canvas: it is being replaced, so nothing may read or save from it. */
+  const releaseEditor = useCallback(() => {
+    liveEditor.current = null;
+    setEditor(null);
+  }, []);
 
   /**
    * Fold the visible level into the project synchronously and detach autosave from the canvas.
@@ -426,6 +476,7 @@ export function App() {
     window.clearTimeout(saveTimer.current);
     stopAutosave.current?.();
     stopAutosave.current = undefined;
+    liveEditor.current = null;
     const current = activeProjectRef.current;
     if (!current || !instance) return current;
     try {
@@ -434,8 +485,9 @@ export function App() {
       rememberProject(updated);
       void projectRepository.saveProject(updated).then(() => setSaveStatus("saved")).catch(() => setSaveStatus("error"));
       return updated;
-    } catch {
+    } catch (error) {
       setSaveStatus("error");
+      reportError(error, "Could not read the canvas");
       return current;
     }
   }, [readDocument, rememberProject]);
@@ -457,8 +509,10 @@ export function App() {
         // Same project, different altitude: keep the edits, swap the level.
         const flushed = flushCanvas(editor);
         const focus = resolveFocus(flushed?.document ?? current.document, routedLevelId());
-        if (focus !== focusRef.current) applyFocus(focus);
-        else if (editor) attachAutosave(editor);
+        if (focus !== focusRef.current) {
+          applyFocus(focus);
+          releaseEditor();
+        } else if (editor) attachAutosave(editor);
         return;
       }
       if (routeId) {
@@ -473,7 +527,7 @@ export function App() {
       flushCanvas(editor);
       activeProjectRef.current = null;
       setActiveProject(null);
-      setEditor(null);
+      releaseEditor();
       setInspectorOpen(false);
       setVersionsOpen(false);
       setPaletteOpen(false);
@@ -486,7 +540,7 @@ export function App() {
     };
     window.addEventListener("popstate", followBrowserHistory);
     return () => window.removeEventListener("popstate", followBrowserHistory);
-  }, [activateProject, applyFocus, attachAutosave, editor, flushCanvas, refreshProjects]);
+  }, [activateProject, applyFocus, attachAutosave, editor, flushCanvas, refreshProjects, releaseEditor]);
 
   const onMount = useCallback((instance: Editor) => {
     setEditor(instance);
@@ -509,6 +563,8 @@ export function App() {
     const flushed = flushCanvas(editor) ?? current;
     if (!flushed.document.elements.some((element) => element.id === elementId)) return;
     applyFocus(elementId);
+    // The level is part of the canvas key, so this editor is about to be torn down.
+    releaseEditor();
     window.history.pushState({ projectId: flushed.id }, "", projectHash(flushed.id, elementId));
     setInspectorOpen(false);
     setPaletteOpen(false);
@@ -516,19 +572,20 @@ export function App() {
     const target = flushed.document.elements.find((element) => element.id === elementId);
     const inside = elementsAtLevel(flushed.document, elementId).length;
     setMessage(inside ? `Zoomed into ${target?.name ?? elementId}` : `New level inside ${target?.name ?? elementId}: add objects to detail it`);
-  }, [applyFocus, editor, flushCanvas]);
+  }, [applyFocus, editor, flushCanvas, releaseEditor]);
 
   const zoomOutTo = useCallback((focus: LevelFocus) => {
     const current = activeProjectRef.current;
     if (!current || focusRef.current === focus) return;
     const flushed = flushCanvas(editor) ?? current;
     applyFocus(resolveFocus(flushed.document, focus));
+    releaseEditor();
     window.history.pushState({ projectId: flushed.id }, "", projectHash(flushed.id, focus));
     setInspectorOpen(false);
     setPaletteOpen(false);
     setConnectionSourceId(null);
     setMessage(focus === null ? "Zoomed out to the root level" : "Zoomed out one level");
-  }, [applyFocus, editor, flushCanvas]);
+  }, [applyFocus, editor, flushCanvas, releaseEditor]);
 
   const addObject = (preset: SemanticObjectPreset) => {
     if (!editor) return;
@@ -600,6 +657,7 @@ export function App() {
       stopAutosave.current?.();
       stopAutosave.current = undefined;
       applyFocus(null);
+      releaseEditor();
       window.history.replaceState({ projectId: current.id }, "", projectHash(current.id, null));
     }
     await projectRepository.saveProject(importedProject);
@@ -642,7 +700,7 @@ export function App() {
     setJsonImportOpen(true);
   };
 
-  const count = editor ? readShapes(editor).length : activeProject?.document.elements.length ?? 0;
+  const count = editor ? readShapesSafely(editor).length : activeProject?.document.elements.length ?? 0;
   const selectedShape = editor?.getOnlySelectedShape() ?? null;
   const selectedElement = selectedShape?.meta[STUDIO_META_KEY] as StudioElement | undefined;
   const selectedConnection = editor && selectedShape?.type === "arrow" ? readConnection(editor, selectedShape) : null;
@@ -650,7 +708,7 @@ export function App() {
   const hasSemanticSelection = Boolean(selectedElement || selectedConnectionData);
   const semanticPresets = activeProject ? semanticObjectsForMode(activeProject.mode) : [];
   const liveReferenceElements = editor
-    ? readShapes(editor).map((shape) => shape.meta[STUDIO_META_KEY]).filter((element) => element.type === "reference-image")
+    ? readShapesSafely(editor).map((shape) => shape.meta[STUDIO_META_KEY]).filter((element) => element.type === "reference-image")
     : activeProject?.document.elements.filter((element) => element.type === "reference-image") ?? [];
   const lockedReferenceCount = liveReferenceElements.filter((element) => element.locked).length;
   const hiddenReferenceCount = liveReferenceElements.filter((element) => element.appearance?.hidden === true).length;
@@ -977,7 +1035,7 @@ export function App() {
     flushCanvas(editor);
     activeProjectRef.current = null;
     setActiveProject(null);
-    setEditor(null);
+    releaseEditor();
     applyFocus(null);
     setInspectorOpen(false);
     setVersionsOpen(false);
@@ -1068,6 +1126,7 @@ export function App() {
       stopAutosave.current?.();
       stopAutosave.current = undefined;
       applyFocus(focus);
+      releaseEditor();
       window.history.replaceState({ projectId: current.id }, "", projectHash(current.id, focus));
     }
     await projectRepository.saveProject(restored);
@@ -1075,15 +1134,15 @@ export function App() {
     setMessage(`Restored version ${version.number} into the active draft`);
   };
 
-  if (!activeProject) return <ProjectDashboard
+  if (!activeProject) return <><ErrorBanner /><ProjectDashboard
     projects={projects}
     loading={projectsLoading}
     onCreate={(name, mode) => { void createNewProject(name, mode); }}
     onCreateStarter={(template) => { void createStarterProject(template); }}
     onOpen={openProject}
-    onDuplicate={(project) => { const copy = duplicateProject(project); void projectRepository.saveProject(copy).then(() => refreshProjects()); }}
-    onDelete={(project) => { if (window.confirm(`Delete ${project.name}? This cannot be undone.`)) void projectRepository.deleteProject(project.id).then(() => refreshProjects()); }}
-  />;
+    onDuplicate={(project) => { const copy = duplicateProject(project); void projectRepository.saveProject(copy).then(() => refreshProjects()).catch((error) => reportError(error, "Could not duplicate that project")); }}
+    onDelete={(project) => { if (window.confirm(`Delete ${project.name}? This cannot be undone.`)) void projectRepository.deleteProject(project.id).then(() => refreshProjects()).catch((error) => reportError(error, "Could not delete that project")); }}
+  /></>;
 
   return <main className="studio-shell">
     <header className="studio-header">
@@ -1199,8 +1258,8 @@ export function App() {
         <label>Relationship type<select value={connectionDraft.type} onChange={(event) => updateConnectionDraft("type", event.target.value as StudioConnection["type"])}>
           <option value="flow">Flow</option><option value="dependency">Dependency</option><option value="relationship">Relationship</option><option value="loop">Loop</option><option value="generic">Generic</option>
         </select></label>
-        <label>Source<select value={connectionDraft.sourceElementId} onChange={(event) => updateConnectionDraft("sourceElementId", event.target.value)}>{readShapes(editor!).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
-        <label>Destination<select value={connectionDraft.targetElementId} onChange={(event) => updateConnectionDraft("targetElementId", event.target.value)}>{readShapes(editor!).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
+        <label>Source<select value={connectionDraft.sourceElementId} onChange={(event) => updateConnectionDraft("sourceElementId", event.target.value)}>{readShapesSafely(editor).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
+        <label>Destination<select value={connectionDraft.targetElementId} onChange={(event) => updateConnectionDraft("targetElementId", event.target.value)}>{readShapesSafely(editor).map((shape) => <option key={shape.meta[STUDIO_META_KEY].id} value={shape.meta[STUDIO_META_KEY].id}>{shape.props.label}</option>)}</select></label>
         <label>Design Intent<span>Hidden from the canvas; included in JSON.</span><textarea rows={3} value={connectionDraft.intent} onChange={(event) => updateConnectionDraft("intent", event.target.value)} /></label>
         <label>Implementation Notes<span>One note per line.</span><textarea rows={3} value={connectionDraft.implementationNotes} onChange={(event) => updateConnectionDraft("implementationNotes", event.target.value)} /></label>
         <label>Tags<span>Comma separated.</span><input value={connectionDraft.tags} onChange={(event) => updateConnectionDraft("tags", event.target.value)} /></label>
@@ -1277,6 +1336,7 @@ export function App() {
         >{paletteOpen ? "× Close objects" : "＋ Add object"}</button>
       </div>
     </section>
+    <ErrorBanner />
     <footer aria-live="polite"><span><strong>{count}</strong> semantic object{count === 1 ? "" : "s"}{focusedElement ? ` in ${focusedElement.name?.trim() || focusedElement.type}` : ""}</span><span>{message}</span><span>StudioDocument v1 · r{revision}</span></footer>
   </main>;
 }
