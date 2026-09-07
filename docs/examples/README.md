@@ -4,7 +4,12 @@ Importable `StudioDocument` files (schemaVersion 1). Open Graph Writer → impor
 
 ## Kalshi bot system maps
 
-A master map plus five subsystem maps, all in `architecture` mode. Read the master
+`kalshi-bot-levels.json` is the whole system as one multi-level document: the root
+shows the major systems, and five of them zoom into their own level. Import this one
+to browse the map with the level bar and badges. It is generated from the files below
+by `node scripts/merge-kalshi-levels.mjs`.
+
+The separate files remain for readers who want one map per file. Read the master
 first; every node that expands into its own map names it in `properties.detailMap`,
 and each subsystem map points back through `metadata.parentMap`.
 

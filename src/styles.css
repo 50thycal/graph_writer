@@ -105,6 +105,39 @@ button { font: inherit; }
 .reference-controls input[type="range"] { accent-color: #34745f; padding: 0; width: 100%; }
 .reference-controls > div { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .reference-controls > div .button { font-size: 9px; padding-inline: 7px; width: 100%; }
+.crash-screen { align-items: center; background: #eef1ed; display: flex; height: 100dvh; justify-content: center; padding: 24px; }
+.crash-screen > div { background: #fbfcf8; border: 1px solid #ccd4d0; border-radius: 18px; box-shadow: 0 18px 50px rgb(24 63 56 / 12%); max-width: 560px; padding: 28px; width: 100%; }
+.crash-screen h1 { font-size: clamp(20px, 4vw, 28px); letter-spacing: -.03em; margin: 0 0 10px; }
+.crash-explanation { color: #52635d; font-size: 12px; line-height: 1.55; margin: 0 0 16px; }
+.crash-message { background: #fff1ef; border: 1px solid #e8b7b0; border-radius: 9px; color: #7b312b; font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 16px; padding: 11px; white-space: pre-wrap; word-break: break-word; }
+.crash-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.crash-detail { margin-top: 14px; }
+.crash-detail summary { color: #52635d; cursor: pointer; font-size: 10px; font-weight: 750; }
+.crash-detail pre { background: #17211f; border-radius: 9px; color: #e7eee9; font: 9px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 9px 0 0; max-height: 240px; overflow: auto; padding: 11px; white-space: pre-wrap; }
+.error-banner { align-items: flex-start; background: #fff1ef; border: 1px solid #e8b7b0; border-radius: 12px; bottom: 40px; box-shadow: 0 12px 32px rgb(123 49 43 / 18%); display: flex; gap: 10px; justify-content: space-between; left: 50%; max-width: min(520px, calc(100% - 24px)); padding: 11px 13px; position: fixed; transform: translateX(-50%); width: max-content; z-index: 900; }
+.error-banner > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.error-banner strong { color: #7b312b; font-size: 11px; }
+.error-banner span { color: #8a4a43; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.error-banner .icon-button { background: rgb(255 255 255 / 70%); flex: 0 0 auto; height: 26px; width: 26px; }
+.level-bar { align-items: center; background: rgb(250 252 248 / 96%); border: 1px solid #c8d2cd; border-radius: 999px; box-shadow: 0 8px 24px rgb(24 63 56 / 14%); display: flex; gap: 6px; left: 50%; max-width: calc(100% - 28px); padding: 4px 10px 4px 4px; position: absolute; top: 12px; transform: translateX(-50%); z-index: 360; }
+.level-up { align-items: center; background: #183f38; border: 0; border-radius: 50%; color: #d9ff7a; cursor: pointer; display: flex; flex: 0 0 auto; font-size: 15px; font-weight: 800; height: 30px; justify-content: center; width: 30px; }
+.level-crumbs { align-items: center; display: flex; gap: 2px; list-style: none; margin: 0; min-width: 0; overflow-x: auto; padding: 0 2px; scrollbar-width: none; }
+.level-crumbs li { align-items: center; display: flex; flex: 0 0 auto; gap: 2px; }
+.level-crumbs li > span { color: #8a9893; font-size: 11px; padding: 0 2px; }
+.level-crumbs button { background: transparent; border: 0; border-radius: 8px; color: #31554d; cursor: pointer; font-size: 11px; font-weight: 750; max-width: 150px; min-height: 30px; overflow: hidden; padding: 0 7px; text-overflow: ellipsis; white-space: nowrap; }
+.level-crumbs button:hover:not(:disabled) { background: #e8efea; }
+.level-crumbs button:disabled { color: #173f38; cursor: default; }
+.level-meta { border-left: 1px solid #d9e0dc; color: #7a8782; flex: 0 0 auto; font-size: 9px; font-weight: 750; letter-spacing: .08em; padding-left: 8px; text-transform: uppercase; }
+.level-empty { background: rgb(250 252 248 / 92%); border: 1px dashed #b7c4be; border-radius: 14px; color: #52635d; display: flex; flex-direction: column; font-size: 11px; gap: 4px; left: 50%; line-height: 1.45; max-width: min(360px, calc(100% - 48px)); padding: 14px 16px; pointer-events: none; position: absolute; text-align: center; top: 50%; transform: translate(-50%, -50%); z-index: 340; }
+.level-empty strong { color: #173f38; font-size: 13px; }
+.level-badges { height: 100%; left: 0; pointer-events: none; position: absolute; top: 0; width: 100%; }
+.level-badge { background: #183f38; border: 0; border-radius: 999px; box-shadow: 0 6px 16px rgb(24 63 56 / 25%); color: #d9ff7a; cursor: pointer; font-size: 10px; font-weight: 800; left: 0; min-height: 24px; padding: 0 10px; pointer-events: auto; position: absolute; top: 0; white-space: nowrap; }
+.level-badge.selected { background: white; border: 1px solid #8ba79f; color: #183f38; }
+.level-controls { border: 1px solid #d5ded9; border-radius: 11px; display: flex; flex-direction: column; gap: 9px; margin: 0; padding: 11px; }
+.level-controls legend { color: #173f38; font-size: 11px; font-weight: 800; padding: 0 5px; }
+.level-controls > p { color: #78847f; font-size: 9px; line-height: 1.35; margin: -2px 0 2px; }
+.level-controls > div { display: grid; gap: 7px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.level-controls > div .button { font-size: 9px; padding-inline: 7px; width: 100%; }
 .semantic-context-trigger { background: rgb(255 255 255 / 94%); box-shadow: 0 8px 24px rgb(24 63 56 / 15%); color: #183f38; }
 .semantic-context-trigger span { color: #579744; margin-right: 3px; }
 .semantic-context-trigger.active { background: #e4eee9; border-color: #8ba79f; }
@@ -154,6 +187,12 @@ footer span:nth-child(2) { text-align: center; }
   .button { font-size: 11px; padding-inline: 9px; }
   .save-status { display: none; }
   .save-version-button, .import-button { display: none; }
+  .level-bar { max-width: calc(100% - 24px); top: 52px; }
+  .error-banner { bottom: max(12px, env(safe-area-inset-bottom)); max-width: calc(100% - 16px); width: calc(100% - 16px); }
+  .crash-screen { padding: 14px; }
+  .crash-screen > div { padding: 20px; }
+  .level-meta { display: none; }
+  .level-crumbs button { max-width: 110px; }
   .semantic-actions { align-items: flex-start; bottom: auto; flex-direction: column; gap: 6px; left: 9px; right: auto; top: 104px; }
   .semantic-actions .button { font-size: 0; height: 42px; min-height: 42px; padding: 0; width: 44px; }
   .semantic-actions .button::after { content: attr(data-short); font-size: 19px; }

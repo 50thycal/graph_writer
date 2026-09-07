@@ -1,6 +1,7 @@
 import type { StudioDocument } from "../../studio/schema/studio-document";
 import { starterTemplates, type StarterTemplate } from "../../studio/templates/starter-templates";
 import type { StudioProject } from "./project-repository";
+import { levelCount } from "../../studio/levels/levels";
 
 interface ProjectDashboardProps {
   projects: StudioProject[];
@@ -45,7 +46,7 @@ export function ProjectDashboard({ projects, loading, onCreate, onCreateStarter,
       <div className="section-heading"><div><p className="eyebrow">Stored on this device</p><h2 id="projects-heading">Recent projects</h2></div><span>{projects.length} project{projects.length === 1 ? "" : "s"}</span></div>
       {loading ? <p className="empty-projects">Loading projects…</p> : projects.length === 0 ? <p className="empty-projects">No projects yet. Choose a template above to begin.</p> : <div className="project-grid">{projects.map((project) => <article className="project-card" key={project.id}>
         <button className="project-preview" onClick={() => onOpen(project)} aria-label={`Open ${project.name}`}>
-          <span>{project.document.elements.length}</span><small>objects</small><i>{project.document.connections.length} connections</i>
+          <span>{project.document.elements.length}</span><small>objects</small><i>{project.document.connections.length} connections{levelCount(project.document) > 1 ? ` · ${levelCount(project.document)} levels` : ""}</i>
         </button>
         <div className="project-card-copy"><p>{project.mode.replace("-", " ")}</p><h3>{project.name}</h3><span>Edited {new Date(project.updatedAt).toLocaleString()}</span></div>
         <div className="project-card-actions">

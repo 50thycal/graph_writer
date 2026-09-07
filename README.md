@@ -19,6 +19,8 @@ WS-001 and WS-002 are implemented:
 
 The first architectural review gate is now available: tldraw owns canvas interaction while `StudioDocument` remains the clean durable format.
 
+Canvases also have [altitude levels](docs/LEVELS.md): zoom into any object to break it into its own smaller canvas, hand off one level at a time, and zoom back out to connect the pieces.
+
 ## Run locally
 
 ```bash
