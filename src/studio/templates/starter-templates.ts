@@ -5,7 +5,7 @@ export interface StarterTemplate {
   name: string;
   shortName: string;
   description: string;
-  complexity: "simple" | "intermediate";
+  complexity: "simple" | "intermediate" | "multi-level";
   mode: StudioDocument["mode"];
   elements: StudioElement[];
   connections: StudioConnection[];
@@ -22,7 +22,43 @@ const element = (
   properties: Record<string, unknown>,
   appearance: Record<string, unknown>,
   intent: string[],
-): StudioElement => ({ id, type, name, transform: { x, y, width, height }, properties, appearance, intent, implementationNotes: [], tags: [type, "starter"] });
+  parentElementId?: string,
+): StudioElement => ({ id, type, name, transform: { x, y, width, height }, properties, appearance, intent, implementationNotes: [], tags: [type, "starter"], ...(parentElementId ? { parentElementId } : {}) });
+
+const flow = (id: string, sourceElementId: string, targetElementId: string, label: string, intent: string, type: StudioConnection["type"] = "flow"): StudioConnection =>
+  ({ id, sourceElementId, targetElementId, type, label, properties: {}, intent: [intent], implementationNotes: [], tags: [] });
+
+// Root level: the core loop, small enough to agree on in one glance.
+// Each root object then zooms into its own level, so the risky chunk can be built and verified on its own.
+const radioElements: StudioElement[] = [
+  element("radio-user", "input", "You, in any chat", 0, 150, 190, 110, { dataType: "spoken or typed request", required: true }, { shape: "oval", color: "green", fill: "solid" }, ["Lowest friction wins: no dedicated project folder, no app to open."]),
+  element("radio-skill", "agent", "Radio skill", 300, 130, 250, 150, { role: "editorial rules", model: "", inputs: ["request", "repo evidence"], outputs: ["feed", "topics", "script"], tools: ["github"], retryCount: 0 }, { shape: "rectangle", color: "violet", fill: "solid" }, ["The only custom component. Zoom in for the three modes.", "It selects and narrates; it never becomes a second source of truth."]),
+  element("radio-github", "tool", "GitHub", 300, 400, 250, 130, { toolName: "github connector", operation: "read repos, PRs, docs" }, { shape: "hexagon", color: "orange", fill: "solid" }, ["Hard part first: prove this connection works before polishing any output.", "Zoom in for what it is and is not used for."]),
+  element("radio-memory", "concept", "Stable preferences", 0, 400, 190, 130, { status: "ready" }, { shape: "rectangle", color: "blue", fill: "solid" }, ["Chat memory holds who you are and how you like to listen, never current project status."]),
+  element("radio-output", "output", "Update or episode", 790, 150, 220, 110, { dataType: "listenable text", destination: "chat, then voice" }, { shape: "oval", color: "green", fill: "solid" }, ["Text stays visible for checking; voice reads it back.", "Listening leads to the next question in the same chat, so the loop closes without another tool."]),
+  // Level: Radio skill
+  element("radio-mode-catchup", "transform", "Catch me up", 0, 0, 230, 130, { inputSchema: "window of repo activity", outputSchema: "compact feed" }, { shape: "rectangle", color: "blue", fill: "solid" }, ["Surface what changed, what was verified, what needs a decision. Do not invent new work."], "radio-skill"),
+  element("radio-mode-suggest", "transform", "Suggest episodes", 0, 190, 230, 130, { inputSchema: "recent tensions and decisions", outputSchema: "three topics" }, { shape: "rectangle", color: "blue", fill: "solid" }, ["Favour unresolved decisions over summaries."], "radio-skill"),
+  element("radio-mode-podcast", "transform", "Make a podcast", 0, 380, 230, 130, { inputSchema: "one topic", outputSchema: "listening script" }, { shape: "rectangle", color: "blue", fill: "solid" }, ["Evidence brief first, narration second, so it never reads like a changelog."], "radio-skill"),
+  element("radio-evidence", "agent", "Evidence brief", 340, 190, 240, 140, { role: "researcher", model: "", inputs: ["repo activity"], outputs: ["facts", "open questions", "confidence"], tools: ["github"], retryCount: 1 }, { shape: "rectangle", color: "violet", fill: "solid" }, ["Shared by all three modes; separates facts from interpretation."], "radio-skill"),
+  element("radio-gate", "gate", "Meaningful?", 680, 170, 180, 180, { condition: "changes behaviour, closes or opens a decision", truePath: "include", falsePath: "ignore" }, { shape: "diamond", color: "yellow", fill: "solid" }, ["Dependency bumps and formatting never make the cut."], "radio-skill"),
+  // Level: GitHub
+  element("radio-live", "concept", "Live evidence", 0, 0, 260, 140, { status: "active" }, { shape: "rectangle", color: "orange", fill: "solid" }, ["Commits, PRs, issues, tests: read on demand, never cached into a second feed."], "radio-github"),
+  element("radio-durable", "concept", "Durable intent", 0, 200, 260, 140, { status: "draft" }, { shape: "rectangle", color: "orange", fill: "solid" }, ["One short project-state document per repo: why it exists, current goal, definition of done.", "Changes only when direction changes, so it is not a changelog."], "radio-github"),
+  element("radio-registry", "note", "Tiny registry", 340, 100, 220, 120, { audience: "implementation" }, { shape: "cloud", color: "yellow", fill: "solid" }, ["Friendly names and which monorepo folder is which game. Nothing that changes weekly."], "radio-github"),
+];
+
+const radioConnections: StudioConnection[] = [
+  flow("radio-ask", "radio-user", "radio-skill", "asks", "Natural phrasing triggers the skill; an explicit mention guarantees it."),
+  flow("radio-read", "radio-skill", "radio-github", "reads", "Every answer is grounded in current repo evidence.", "dependency"),
+  flow("radio-prefs", "radio-memory", "radio-skill", "shapes tone", "Preferences shape length and voice, not facts.", "relationship"),
+  flow("radio-deliver", "radio-skill", "radio-output", "produces", "One of three outputs depending on the request."),
+  flow("radio-catchup-evidence", "radio-mode-catchup", "radio-evidence", "needs", "Feed is built from the brief, not from raw commits.", "dependency"),
+  flow("radio-suggest-evidence", "radio-mode-suggest", "radio-evidence", "needs", "Topics come from tensions the brief exposes.", "dependency"),
+  flow("radio-podcast-evidence", "radio-mode-podcast", "radio-evidence", "needs", "Script is written only after the brief is fact-checked.", "dependency"),
+  flow("radio-evidence-gate", "radio-evidence", "radio-gate", "filters", "The gate keeps the feed short enough to read on a phone."),
+  flow("radio-live-durable", "radio-live", "radio-durable", "compared against", "Live activity is judged against the stated goal, so drift is visible.", "relationship"),
+];
 
 const colorMatchElements: StudioElement[] = [
   element("color-table", "board", "Shared Tabletop", 0, 0, 960, 600, { dimensions: "960 × 600", zones: ["draw", "discard", "players"] }, { shape: "rectangle", color: "green", fill: "semi" }, ["Keep the central play state immediately readable on a phone."]),
@@ -46,6 +82,16 @@ const routeBuilderElements: StudioElement[] = [
 ];
 
 export const starterTemplates: StarterTemplate[] = [
+  {
+    id: "build-os-radio-levels",
+    name: "Idea to Build Plan (levels)",
+    shortName: "Idea to Build Plan",
+    description: "A worked example of zooming from a core idea into its risky chunk: a one-glance root loop, with two objects that open into their own levels. Hand off one level at a time.",
+    complexity: "multi-level",
+    mode: "graph",
+    elements: radioElements,
+    connections: radioConnections,
+  },
   {
     id: "color-match-card-table",
     name: "Color Match Card Table",

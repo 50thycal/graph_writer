@@ -1,4 +1,5 @@
 import type { StudioDocument, StudioElement } from "../../studio/schema/studio-document";
+import { ancestryOf, childCounts, connectionsAtLevel, crossLevelConnections, elementsAtLevel, levelCount, resolveFocus, type LevelFocus } from "../../studio/levels/levels";
 
 export interface HandoffBundle {
   document: StudioDocument;
@@ -13,6 +14,8 @@ export interface HandoffBundle {
 
 export interface HandoffContext {
   versionLabel: string;
+  /** The altitude level being handed off. Omitted or null means the root level. */
+  focusElementId?: LevelFocus;
 }
 
 function cleanFileName(value: string) {
@@ -41,17 +44,29 @@ function formatNotes(notes?: string[]) {
   return notes?.map((note) => `- ${note}`).join("\n") ?? "";
 }
 
-function annotatedElements(document: StudioDocument) {
-  return document.elements.filter((element) => element.intent?.length || element.implementationNotes?.length);
+function annotatedElements(elements: StudioElement[]) {
+  return elements.filter((element) => element.intent?.length || element.implementationNotes?.length);
 }
 
-function spatiallySortedElements(document: StudioDocument) {
-  return [...document.elements].sort((left, right) =>
+function spatiallySortedElements(elements: StudioElement[]) {
+  return [...elements].sort((left, right) =>
     left.transform.y - right.transform.y || left.transform.x - right.transform.x || left.id.localeCompare(right.id));
+}
+
+function levelPath(document: StudioDocument, focus: LevelFocus) {
+  return ["Root", ...ancestryOf(document, focus).map(displayName)].join(" › ");
 }
 
 export function generateHandoffMarkdown(document: StudioDocument, context: HandoffContext) {
   const elementById = new Map(document.elements.map((element) => [element.id, element]));
+  const focus = resolveFocus(document, context.focusElementId ?? null);
+  const ancestry = ancestryOf(document, focus);
+  const focusElement = ancestry.at(-1);
+  const levelElements = elementsAtLevel(document, focus);
+  const levelConnections = connectionsAtLevel(document, focus);
+  const counts = childCounts(document);
+  const totalLevels = levelCount(document);
+  const multiLevel = totalLevels > 1;
   const baseName = cleanFileName(document.name);
   const lines = [
     "# Design Handoff",
@@ -60,14 +75,54 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     `**Mode:** ${document.mode}`,
     `**Version:** ${context.versionLabel}`,
     `**Updated:** ${document.updatedAt}`,
-    "",
   ];
+  if (multiLevel) lines.push(`**Level:** ${levelPath(document, focus)} (${levelElements.length} of ${document.elements.length} objects across ${totalLevels} levels)`);
+  lines.push("");
 
   if (document.description) lines.push("## Objective", "", document.description, "");
 
-  const annotated = annotatedElements(document);
+  if (multiLevel) {
+    lines.push("## Altitude", "");
+    lines.push(
+      focus === null
+        ? "This brief covers the root level: the big picture. Objects marked as containing nested detail have their own levels; hand those off one at a time once this level is agreed."
+        : "This brief covers one zoomed-in chunk of a larger design. Build and verify this chunk on its own, then connect it to its neighbours. The zoomed-out context below says where it fits.",
+      "",
+    );
+    if (ancestry.length) {
+      lines.push("**Zoomed-out context (root first)**", "");
+      for (const [index, element] of ancestry.entries()) {
+        const indent = "  ".repeat(index);
+        lines.push(`${indent}- ${displayName(element)} (${element.type})${index === ancestry.length - 1 ? " — this level lives inside it" : ""}`);
+        for (const note of element.intent ?? []) lines.push(`${indent}  - Intent: ${note}`);
+      }
+      lines.push("");
+    }
+    if (focusElement) {
+      const siblings = elementsAtLevel(document, focusElement.parentElementId ?? null).filter((element) => element.id !== focusElement.id);
+      if (siblings.length) {
+        lines.push("**Neighbours at the level above**", "", ...siblings.map((element) => `- ${displayName(element)} (${element.type})`), "");
+      }
+    }
+    const withDetail = levelElements.filter((element) => counts.get(element.id));
+    if (withDetail.length) {
+      lines.push("**Objects on this level with nested detail**", "", ...withDetail.map((element) => `- ${displayName(element)} — ${counts.get(element.id)} nested object${counts.get(element.id) === 1 ? "" : "s"}, treat as a black box here`), "");
+    }
+    const crossing = crossLevelConnections(document, focus);
+    if (crossing.length) {
+      lines.push("**Connections that cross into other levels**", "");
+      for (const connection of crossing) {
+        const source = elementById.get(connection.sourceElementId);
+        const target = elementById.get(connection.targetElementId);
+        lines.push(`- ${source ? displayName(source) : connection.sourceElementId} → ${target ? displayName(target) : connection.targetElementId} (${connection.type})${connection.label ? ` — ${connection.label}` : ""}`);
+      }
+      lines.push("");
+    }
+  }
+
+  const annotated = annotatedElements(levelElements);
   lines.push("## Design Intent and Implementation Context", "");
-  if (!annotated.length && !document.connections.some((connection) => connection.intent?.length || connection.implementationNotes?.length)) {
+  if (!annotated.length && !levelConnections.some((connection) => connection.intent?.length || connection.implementationNotes?.length)) {
     lines.push("No hidden design intent or implementation notes are attached yet.", "");
   }
 
@@ -77,7 +132,7 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     if (element.implementationNotes?.length) lines.push("**Implementation notes**", "", formatNotes(element.implementationNotes), "");
   }
 
-  for (const connection of document.connections.filter((item) => item.intent?.length || item.implementationNotes?.length)) {
+  for (const connection of levelConnections.filter((item) => item.intent?.length || item.implementationNotes?.length)) {
     const source = elementById.get(connection.sourceElementId);
     const target = elementById.get(connection.targetElementId);
     lines.push(`### ${source ? displayName(source) : connection.sourceElementId} → ${target ? displayName(target) : connection.targetElementId}`, "");
@@ -86,7 +141,7 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     if (connection.implementationNotes?.length) lines.push("**Implementation notes**", "", formatNotes(connection.implementationNotes), "");
   }
 
-  const elementsWithProperties = document.elements.filter((element) => Object.keys(element.properties ?? {}).length);
+  const elementsWithProperties = levelElements.filter((element) => Object.keys(element.properties ?? {}).length);
   lines.push("## Semantic Properties", "");
   if (!elementsWithProperties.length) lines.push("No structured properties are defined.", "");
   else lines.push(
@@ -97,7 +152,7 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     "",
   );
 
-  const referenceImages = document.elements.filter((element) => element.type === "reference-image");
+  const referenceImages = levelElements.filter((element) => element.type === "reference-image");
   if (referenceImages.length) {
     const assetById = new Map(document.assets.map((asset) => [asset.id, asset]));
     lines.push("## Visual References", "");
@@ -118,7 +173,7 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     "",
     "| Object | Type | X | Y | Width | Height |",
     "|---|---|---:|---:|---:|---:|",
-    ...spatiallySortedElements(document).map((element) => {
+    ...spatiallySortedElements(levelElements).map((element) => {
       const { x, y, width, height } = element.transform;
       return `| ${tableCell(displayName(element))} | ${tableCell(element.type)} | ${Math.round(x)} | ${Math.round(y)} | ${Math.round(width)} | ${Math.round(height)} |`;
     }),
@@ -127,8 +182,8 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     "",
   );
 
-  if (!document.connections.length) lines.push("No semantic connections are defined.", "");
-  for (const connection of document.connections) {
+  if (!levelConnections.length) lines.push("No semantic connections are defined.", "");
+  for (const connection of levelConnections) {
     const source = elementById.get(connection.sourceElementId);
     const target = elementById.get(connection.targetElementId);
     const label = connection.label ? ` — ${connection.label}` : "";
@@ -140,7 +195,7 @@ export function generateHandoffMarkdown(document: StudioDocument, context: Hando
     "## Attached Files",
     "",
     `- \`${baseName}-design.png\` — visual layout and spatial reference`,
-    `- \`${baseName}-design.json\` — canonical StudioDocument with semantic properties and exact geometry`,
+    `- \`${baseName}-design.json\` — canonical StudioDocument with semantic properties and exact geometry${multiLevel ? "; contains every level, linked through `parentElementId`" : ""}`,
     `- \`${baseName}-handoff.md\` — this implementation brief`,
   );
 

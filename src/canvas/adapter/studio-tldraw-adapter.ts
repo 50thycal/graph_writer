@@ -1,4 +1,5 @@
 import type { StudioConnection, StudioDocument, StudioElement } from "../../studio/schema/studio-document";
+import { connectionsAtLevel, elementsAtLevel, mergeLevel, type LevelFocus } from "../../studio/levels/levels";
 
 export const STUDIO_META_KEY = "studioElement";
 export const STUDIO_CONNECTION_META_KEY = "studioConnection";
@@ -57,18 +58,25 @@ export function tldrawShapeToStudioElement(shape: TldrawShapeRecord): StudioElem
   };
 }
 
-export const studioDocumentToTldrawShapes = (document: StudioDocument) =>
-  document.elements.map(studioElementToTldrawShape);
+export const studioDocumentToTldrawShapes = (document: StudioDocument, focus: LevelFocus = null) =>
+  elementsAtLevel(document, focus).map(studioElementToTldrawShape);
 
+export const studioLevelToTldrawConnections = (document: StudioDocument, focus: LevelFocus = null) =>
+  connectionsAtLevel(document, focus).map(studioConnectionToTldrawConnection);
+
+/**
+ * Fold the canvas back into the document. The canvas only ever shows one altitude
+ * level, so shapes replace that level and every other level of `basis` is preserved.
+ */
 export function tldrawShapesToStudioDocument(
   shapes: TldrawShapeRecord[],
   basis: StudioDocument,
   connections: TldrawConnectionRecord[] = [],
+  focus: LevelFocus = null,
 ): StudioDocument {
   return {
     ...basis,
     updatedAt: new Date().toISOString(),
-    elements: shapes.map(tldrawShapeToStudioElement),
-    connections: connections.map(tldrawConnectionToStudioConnection),
+    ...mergeLevel(basis, focus, shapes.map(tldrawShapeToStudioElement), connections.map(tldrawConnectionToStudioConnection)),
   };
 }

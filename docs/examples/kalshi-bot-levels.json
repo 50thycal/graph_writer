@@ -1,0 +1,4705 @@
+{
+  "schemaVersion": 1,
+  "id": "document-kalshi-levels",
+  "name": "Kalshi Bot — Levels",
+  "description": "The Kalshi trading system as one multi-level map. The root shows the major systems; zoom into a system to see how it works inside.",
+  "mode": "architecture",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "elements": [
+    {
+      "id": "kalshi",
+      "type": "external-system",
+      "name": "Kalshi exchange",
+      "transform": {
+        "x": 60,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "Kalshi",
+        "interface": "/trade-api/v2 — markets, books, orders, settlements"
+      },
+      "intent": [
+        "The venue. Everything else in this diagram exists to decide what to send it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "feeds",
+      "type": "external-system",
+      "name": "Market & weather data feeds",
+      "transform": {
+        "x": 60,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "NWS, Open-Meteo, Polymarket, Coinbase",
+        "interface": "public HTTP, no auth"
+      },
+      "intent": [
+        "Detail: kalshi-bot-research-data.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "llm",
+      "type": "external-system",
+      "name": "LLM APIs",
+      "transform": {
+        "x": 60,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "model vendors",
+        "interface": "spend-capped"
+      },
+      "intent": [
+        "No LLM sits in the trading decision path — cognition is for the evo fleet only."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false
+    },
+    {
+      "id": "main-worker",
+      "type": "service",
+      "name": "Railway main worker",
+      "transform": {
+        "x": 470,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "One cycle loop: scan, trade, collect, run Experiment OS boot hooks",
+        "runtime": "BOT_MODE=live"
+      },
+      "intent": [
+        "The only writer to production data."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "runtime"
+      ],
+      "locked": false
+    },
+    {
+      "id": "evo-worker",
+      "type": "service",
+      "name": "Railway evo worker",
+      "transform": {
+        "x": 470,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Hosts the agent fleet",
+        "runtime": "BOT_MODE=evo"
+      },
+      "intent": [
+        "Separate worker so agent cognition can never stall the trading cycle."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "runtime"
+      ],
+      "locked": false
+    },
+    {
+      "id": "pipeline",
+      "type": "service",
+      "name": "Trading pipeline",
+      "transform": {
+        "x": 880,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "scan → candidate → risk → paper / live / twin"
+      },
+      "intent": [
+        "Where every order intent is born and gated."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "collectors",
+      "type": "service",
+      "name": "Research collectors",
+      "transform": {
+        "x": 880,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Ride-along data collection for books that do not exist yet"
+      },
+      "intent": [
+        "Collection is decoupled from trading: the dataset accumulates before any book trades on it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "fleet",
+      "type": "service",
+      "name": "Evolutionary agent fleet",
+      "transform": {
+        "x": 880,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "LLM agents that propose and run their own books under budget"
+      },
+      "intent": [
+        "Agents get no exemption from registration, gates or the arming ritual."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "detail"
+      ],
+      "locked": false
+    },
+    {
+      "id": "orders",
+      "type": "external-system",
+      "name": "Kalshi order entry",
+      "transform": {
+        "x": 1290,
+        "y": 80,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "owner": "Kalshi",
+        "mirrorOf": "kalshi"
+      },
+      "intent": [
+        "Mirror of the exchange, drawn separately so the money-spending edge is legible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system",
+        "mirror",
+        "real-money"
+      ],
+      "locked": false
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "name": "Postgres — single writer",
+      "transform": {
+        "x": 1290,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "technology": "Postgres (Railway)",
+        "data": "market record, trading record, research inputs, Experiment OS schema"
+      },
+      "intent": [
+        "Every path into it that is not the worker is read-only by construction."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false
+    },
+    {
+      "id": "dashboards",
+      "type": "service",
+      "name": "Read-only dashboards",
+      "transform": {
+        "x": 1700,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Operator views of books, positions and live state"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "observability"
+      ],
+      "locked": false
+    },
+    {
+      "id": "xos",
+      "type": "service",
+      "name": "Experiment OS",
+      "transform": {
+        "x": 1290,
+        "y": 1030,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Lifecycle, gates, enforcement, platform revisions, issues"
+      },
+      "intent": [
+        "Canonical for experiment truth. Docs and chat are not authoritative once this can answer the same question."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false
+    },
+    {
+      "id": "operator",
+      "type": "user",
+      "name": "Operator + agent sessions",
+      "transform": {
+        "x": 2110,
+        "y": 384,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "owner of the real money and of every write that is not the worker's"
+      },
+      "intent": [
+        "North star: $100/month realized profit.",
+        "Detail: kalshi-bot-control-plane.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false
+    },
+    {
+      "id": "ops",
+      "type": "queue",
+      "name": "Ops channel",
+      "transform": {
+        "x": 2110,
+        "y": 935,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "topic": "`ops` branch → GitHub Actions → read-only Postgres"
+      },
+      "intent": [
+        "The agent sandbox cannot reach Railway or Postgres; this is the whole route in."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue",
+        "control-plane"
+      ],
+      "locked": false
+    },
+    {
+      "id": "trading-pipeline-kalshi",
+      "type": "external-system",
+      "name": "Kalshi exchange",
+      "transform": {
+        "x": 60,
+        "y": 156,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "markets, order books, trades"
+      },
+      "intent": [
+        "Order books are resting bids only — the YES ask is derived as 100 − best NO bid."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "config",
+      "type": "service",
+      "name": "Fail-closed config",
+      "transform": {
+        "x": 60,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Settings, credentials, book/variant specs, risk caps",
+        "repository": "kalshi_bot/config.py"
+      },
+      "intent": [
+        "Bad config means the worker does nothing trade-like, rather than proceeding on defaults.",
+        "Every book's universe and knobs are parsed and validated here before a cycle runs."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "client",
+      "type": "service",
+      "name": "Kalshi client",
+      "transform": {
+        "x": 470,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "RSA-PSS signing, retries, fail-closed auth",
+        "repository": "kalshi_bot/kalshi/"
+      },
+      "intent": [
+        "Single choke point for exchange credentials."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "scanner",
+      "type": "service",
+      "name": "Scanner",
+      "transform": {
+        "x": 880,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Fetch, compute liquidity metrics, score deterministically",
+        "repository": "kalshi_bot/scanner/"
+      },
+      "intent": [
+        "A fetch failure is recorded as a failure — never inferred as an empty universe."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "db-market",
+      "type": "database",
+      "name": "Market record",
+      "transform": {
+        "x": 880,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "markets, snapshots, order books, signals, candidate ticks"
+      },
+      "intent": [
+        "The tape every replay and backtest is graded against."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "books",
+      "type": "service",
+      "name": "Strategy books",
+      "transform": {
+        "x": 1290,
+        "y": 308,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "families": "mmsell, theta, weather, freeze, pin15, tfav, wcprop, xgame",
+        "repository": "kalshi_bot/<book>/"
+      },
+      "intent": [
+        "Parallel tags against the same tape, so P&L is comparable head-to-head.",
+        "A book is a question, not a product: proving one is −EV is a win."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "strategy"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "universe",
+      "type": "concept",
+      "name": "Universe filter",
+      "transform": {
+        "x": 1290,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "filters": "only= / skip= (raw tickers), mtype= / mode= / xmtype= (taxonomy)"
+      },
+      "intent": [
+        "A series with no taxonomy entry is admitted by NO allowlist filter — classification debt shows up as exclusion."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "candidate",
+      "type": "concept",
+      "name": "Candidate",
+      "transform": {
+        "x": 1700,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "dataType": "market × book × cycle, with the entry rule's edge attached"
+      },
+      "intent": [
+        "The one object paper, live and twin all share."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "obs",
+      "type": "service",
+      "name": "Evidence funnel",
+      "transform": {
+        "x": 1700,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Names the stage where a book's count first hit zero",
+        "repository": "kalshi_bot/obs/funnel.py"
+      },
+      "intent": [
+        "Distinguishes 'saw no markets' from 'was never asked' without reading raw logs."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "risk",
+      "type": "service",
+      "name": "Risk manager",
+      "transform": {
+        "x": 2110,
+        "y": 650,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "gates": "kill switch, mode, balance, spread, liquidity, closes-soon, per-market + total exposure, daily loss"
+      },
+      "intent": [
+        "Fail-closed: refuses on any doubt.",
+        "Never weakened to make a task easier."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "paper",
+      "type": "service",
+      "name": "Paper engine",
+      "transform": {
+        "x": 2520,
+        "y": 878,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Simulate at the real quote, model fees, manage exits, settle 0/100"
+      },
+      "intent": [
+        "Edge is measured against the price actually paid, so the spread is netted out.",
+        "Its one structural lie: it assumes a resting maker order always fills."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "live",
+      "type": "service",
+      "name": "Live executor",
+      "transform": {
+        "x": 2520,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "requires": "BOT_MODE=live + KILL_SWITCH=false + tag on LIVE_STRATEGIES"
+      },
+      "intent": [
+        "Three independent conditions, plus a recorded arming — never one flag."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "real-money"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "twin",
+      "type": "service",
+      "name": "Paper twin",
+      "transform": {
+        "x": 2520,
+        "y": 726,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Fresh paper book on live parameters, started at the same instant"
+      },
+      "intent": [
+        "Controls sample, regime, sizing and concurrency so the only difference left is the fill assumption."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "db-trading",
+      "type": "database",
+      "name": "Trading record",
+      "transform": {
+        "x": 2930,
+        "y": 726,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "paper_trades, positions, live_orders, fills, twin + parity events"
+      },
+      "intent": [
+        "Paper and live sit side by side, so the twin comparison is a query."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "trading-pipeline-orders",
+      "type": "external-system",
+      "name": "Kalshi order entry",
+      "transform": {
+        "x": 2930,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "mirrorOf": "kalshi"
+      },
+      "intent": [
+        "Mirror of the exchange so the money-spending edge stays legible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system",
+        "mirror",
+        "real-money"
+      ],
+      "locked": false,
+      "parentElementId": "pipeline"
+    },
+    {
+      "id": "nws",
+      "type": "external-system",
+      "name": "NWS",
+      "transform": {
+        "x": 60,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "daily forecasts, station observations"
+      },
+      "intent": [
+        "Free, needs a user agent. Also the settlement source for the temperature markets."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "openmeteo",
+      "type": "external-system",
+      "name": "Open-Meteo",
+      "transform": {
+        "x": 60,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "HRRR point forecast, multi-model ensembles"
+      },
+      "intent": [
+        "Ensembles give an empirical P(bucket) — the market prices a distribution, not a point."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "polymarket",
+      "type": "external-system",
+      "name": "Polymarket",
+      "transform": {
+        "x": 60,
+        "y": 118,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "Gamma + data API, no auth"
+      },
+      "intent": [
+        "Reference prices only. Station must match or it is a different bet, not a mispricing."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "coinbase",
+      "type": "external-system",
+      "name": "Crypto spot",
+      "transform": {
+        "x": 60,
+        "y": 1106,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "1-minute BTC/ETH candles"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "kalshi-hist",
+      "type": "external-system",
+      "name": "Kalshi archives + tape",
+      "transform": {
+        "x": 60,
+        "y": 688,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "interface": "candlesticks, /historical, /markets/trades"
+      },
+      "intent": [
+        "The only way to get sample before live collection accumulates."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "weather-collect",
+      "type": "service",
+      "name": "Weather collector",
+      "transform": {
+        "x": 470,
+        "y": 346,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "forecasts, HRRR, intraday observations, ensembles, bucket ladders, settlements"
+      },
+      "intent": [
+        "Throttled and fail-soft: a provider outage skips the weather books and disturbs nothing else."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "pm-collect",
+      "type": "service",
+      "name": "Polymarket collector",
+      "transform": {
+        "x": 470,
+        "y": 156,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "theta-collect",
+      "type": "service",
+      "name": "Crypto ladder collector",
+      "transform": {
+        "x": 470,
+        "y": 1068,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "rolling spot window + near-settlement ladder snapshots with the model probability"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "xgame-collect",
+      "type": "service",
+      "name": "Cross-venue tape collector",
+      "transform": {
+        "x": 470,
+        "y": 764,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "collects": "matched Kalshi/Polymarket game markets, both trade tapes"
+      },
+      "intent": [
+        "Collect only — no trading. Precision over recall: ambiguous matches are dropped."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "backfill",
+      "type": "service",
+      "name": "Kalshi history backfill",
+      "transform": {
+        "x": 470,
+        "y": 612,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "bounded": "a chunk per cycle, newest settlements first"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "t-weather",
+      "type": "database",
+      "name": "weather_* tables",
+      "transform": {
+        "x": 880,
+        "y": 346,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "forecasts, observations, ensembles, bucket snapshots, settlements"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "t-poly",
+      "type": "database",
+      "name": "polymarket_snapshots",
+      "transform": {
+        "x": 880,
+        "y": 194,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Kept apart from the Kalshi tables so provenance is never ambiguous."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "t-crypto",
+      "type": "database",
+      "name": "crypto spot + ladders",
+      "transform": {
+        "x": 880,
+        "y": 992,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "t-game",
+      "type": "database",
+      "name": "game matches + tapes",
+      "transform": {
+        "x": 880,
+        "y": 726,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "t-backfill",
+      "type": "database",
+      "name": "backfill_weather_*",
+      "transform": {
+        "x": 880,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Separate from live-collected tables: an analysis always knows whether a price was observed or reconstructed."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "outcomes",
+      "type": "database",
+      "name": "weather_forecast_outcomes",
+      "transform": {
+        "x": 1290,
+        "y": 308,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "one labeled row per intraday cycle, replayed at settlement with no lookahead"
+      },
+      "intent": [
+        "The persisted validation dataset — skill accumulates instead of being rebuilt ad hoc."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "a-score",
+      "type": "service",
+      "name": "weather_score",
+      "transform": {
+        "x": 1700,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "reports": "P&L by book/window, forecast vs market, consistency"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "a-model",
+      "type": "service",
+      "name": "weather_model_check",
+      "transform": {
+        "x": 1700,
+        "y": 118,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "asks": "does the ensemble beat the market's own implied distribution?"
+      },
+      "intent": [
+        "The gate before any real edge book: Brier / log-loss / cost-aware trades."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "a-sweep",
+      "type": "service",
+      "name": "weather_exit_sweep",
+      "transform": {
+        "x": 1700,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "asks": "should the books hold to settlement?"
+      },
+      "intent": [
+        "Replays every settled trade under a grid of TP/SL exits — a paired comparison live books would need months to approximate."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "a-theta",
+      "type": "service",
+      "name": "theta study",
+      "transform": {
+        "x": 1700,
+        "y": 878,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "a-xgame",
+      "type": "service",
+      "name": "xgame tape study",
+      "transform": {
+        "x": 1700,
+        "y": 612,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "builds": "~10-second bars from both venues' own timestamps"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "verdict",
+      "type": "concept",
+      "name": "Graded verdict",
+      "transform": {
+        "x": 2110,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Read-only analyses inform a verdict; they never are one."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "gate",
+      "type": "human-checkpoint",
+      "name": "Experiment OS gate",
+      "transform": {
+        "x": 2520,
+        "y": 384,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Only a recorded evaluator PASS turns collected data into a book."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "human-checkpoint"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "research-data-books",
+      "type": "service",
+      "name": "Strategy books",
+      "transform": {
+        "x": 2520,
+        "y": 536,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "A dataset earns a book only after it beats the market on settled events."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "collectors"
+    },
+    {
+      "id": "evo-fleet-llm",
+      "type": "external-system",
+      "name": "LLM APIs",
+      "transform": {
+        "x": 60,
+        "y": 840,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "routing": "aliases, not hardcoded models: routine vs deep",
+        "pricing": "evo_model_prices, never assumed"
+      },
+      "intent": [
+        "No API key means cognition fails closed: listeners, marks and settlements keep running, heartbeats journal as skipped."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "external-system"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "ceilings",
+      "type": "concept",
+      "name": "Cost + token ceilings",
+      "transform": {
+        "x": 60,
+        "y": 688,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "limits": "weekly per-agent spend, per-heartbeat tokens, weekly agent tokens"
+      },
+      "intent": [
+        "Enforced BEFORE each call; exceeding one degrades the heartbeat to no_llm bookkeeping rather than stopping the fleet."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "orchestrator",
+      "type": "service",
+      "name": "Evo orchestrator",
+      "transform": {
+        "x": 470,
+        "y": 4,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "runtime": "BOT_MODE=evo",
+        "population": "target 30 agents, 7-day cohorts"
+      },
+      "intent": [
+        "Computes due heartbeat slots deterministically, so a restart recomputes identical schedules."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "heartbeat",
+      "type": "service",
+      "name": "Heartbeat",
+      "transform": {
+        "x": 880,
+        "y": 688,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "shape": "wake → load → retrieve → reason (ONE LLM call) → act → journal → sleep"
+      },
+      "intent": [
+        "One call per heartbeat means no agent-side loop — runaway recursion is impossible by construction."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "listeners",
+      "type": "service",
+      "name": "Listeners",
+      "transform": {
+        "x": 1290,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Cheap deterministic watchers that trigger a wake between scheduled slots."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "research",
+      "type": "service",
+      "name": "Research reads",
+      "transform": {
+        "x": 1290,
+        "y": 1068,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "reads": "thesis docs, BOOK_REGISTRY, live book performance, peer journals"
+      },
+      "intent": [
+        "What the fleet can see of the operator's own strategies — the reason a new book must be published to them."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "sandbox",
+      "type": "service",
+      "name": "Strategy sandbox",
+      "transform": {
+        "x": 1290,
+        "y": 840,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Test a rule before spending a paper position on it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "memory",
+      "type": "service",
+      "name": "Memory + peer learning",
+      "transform": {
+        "x": 1290,
+        "y": 346,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Journals are structural and machine-checkable, so quality is scoreable rather than asserted."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "search",
+      "type": "service",
+      "name": "Historical search",
+      "transform": {
+        "x": 1700,
+        "y": 840,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "capability": "search_strategy_space",
+        "namespace": "evo_search_*"
+      },
+      "intent": [
+        "Replay only, no live path, and no lifecycle of its own (DEC-003)."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "evo-fleet-xos",
+      "type": "service",
+      "name": "Experiment OS registration",
+      "transform": {
+        "x": 1700,
+        "y": 156,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "An agent's tag is refused at the write path like any other unregistered tag."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "evo-fleet-paper",
+      "type": "service",
+      "name": "Shared paper engine",
+      "transform": {
+        "x": 1700,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "The same engine the operator books use — fees, depth-capped entries, settlement at 0/100."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "no-live",
+      "type": "note",
+      "name": "Security boundary",
+      "transform": {
+        "x": 2110,
+        "y": 1695,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "cloud",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Evo runs under BOT_MODE=evo and place_order self-guards on mode + kill switch — there is no live-order path from the fleet."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "note",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "trades",
+      "type": "database",
+      "name": "Agent trades + opportunities",
+      "transform": {
+        "x": 2110,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "evo paper trades, ex-ante evo_opportunities (declared universes)"
+      },
+      "intent": [
+        "Opportunities are logged BEFORE the fact, so post-hoc redefinition of what an agent could have caught is impossible."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "fitness",
+      "type": "service",
+      "name": "Fitness score",
+      "transform": {
+        "x": 2520,
+        "y": 308,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "weights": "profit 35 · consistency 20 · risk 15 · evidence 10 · forecast 10 · adaptive 10"
+      },
+      "intent": [
+        "Bayesian shrinkage toward zero at small n — lottery outcomes get limited credit.",
+        "Integrity failures are penalised separately from shared-infrastructure failures."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "cohort",
+      "type": "service",
+      "name": "Cohort boundary",
+      "transform": {
+        "x": 2930,
+        "y": 346,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "cadence": "every 7 days, birth-anchored",
+        "guard": "unique evo_transitions row — double-finalize impossible"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "retire",
+      "type": "service",
+      "name": "Retirement — bottom 30%",
+      "transform": {
+        "x": 3340,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Retired is permanently inactive, never deleted: identity, genomes, trades and the terminal reflection stay queryable."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "reproduce",
+      "type": "service",
+      "name": "Reproduction — top 30%",
+      "transform": {
+        "x": 3340,
+        "y": 156,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Every 4th cohort swaps one child slot for a wildcard founder, so the population cannot converge on one lineage."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "graveyard",
+      "type": "database",
+      "name": "Graveyard + lineage",
+      "transform": {
+        "x": 3750,
+        "y": 802,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Prior failures are a readable corpus, not deleted history."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "tickets",
+      "type": "queue",
+      "name": "Capability tickets",
+      "transform": {
+        "x": 2110,
+        "y": 783,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "dedup": "token-set similarity — duplicates become supporters of the existing ticket"
+      },
+      "intent": [
+        "The fleet asks for capabilities it lacks instead of inventing unsafe workarounds."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "triage",
+      "type": "user",
+      "name": "Evo Ticket Workshop",
+      "transform": {
+        "x": 2520,
+        "y": 840,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "A human session actions or rejects each request and closes what was already delivered."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "user"
+      ],
+      "locked": false,
+      "parentElementId": "fleet"
+    },
+    {
+      "id": "experiment",
+      "type": "service",
+      "name": "Experiment",
+      "transform": {
+        "x": 60,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Asks exactly one question"
+      },
+      "intent": [
+        "The central domain object. Everything else hangs off it."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "version",
+      "type": "service",
+      "name": "Version",
+      "transform": {
+        "x": 470,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Freezes the scientific contract: rules, universe, risk envelope, declared arm set"
+      },
+      "intent": [
+        "A changed question is a NEW Version, never an edited one.",
+        "Narrowing a frozen arm set or risk envelope is a successor Version (DEC-004)."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "epoch",
+      "type": "service",
+      "name": "Epoch",
+      "transform": {
+        "x": 470,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "A changed world under the same question — taxonomy expansion, candidate-population change"
+      },
+      "intent": [
+        "Evidence never pools across a boundary Experiment OS declares non-poolable."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "deployment",
+      "type": "service",
+      "name": "Deployment + arm",
+      "transform": {
+        "x": 880,
+        "y": 384,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Binds one arm of a Version to a strategy tag"
+      },
+      "intent": [
+        "The only thing that grants a tag permission to trade at all."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "tag",
+      "type": "concept",
+      "name": "Strategy tag",
+      "transform": {
+        "x": 1290,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "example": "one tag per arm; live and twin tags are separate"
+      },
+      "intent": [
+        "A tag not registered to an active deployment arm cannot write."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "enforcement",
+      "type": "service",
+      "name": "Enforcement (NEW_ONLY)",
+      "transform": {
+        "x": 1290,
+        "y": 612,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "since": "2026-08-16 cutover prod-new-only",
+        "behavior": "refuse at the write path"
+      },
+      "intent": [
+        "Refused, not warned about.",
+        "Existing books are grandfathered but may not silently gain arms or change rules."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "experiment-os-books",
+      "type": "service",
+      "name": "Books trading under the tag",
+      "transform": {
+        "x": 1700,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Paper, live canary or production — the stage decides which."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "strategy"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "evidence",
+      "type": "database",
+      "name": "Evidence",
+      "transform": {
+        "x": 2110,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "data": "paper + live trades, fills, twin parity, funnel counts"
+      },
+      "intent": [
+        "Accumulated per arm and per epoch, never pooled across a broken boundary."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "experiment-os-gate",
+      "type": "human-checkpoint",
+      "name": "Pre-registered gate",
+      "transform": {
+        "x": 2520,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 150,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "reviewer": "the designated evaluator",
+        "approvalCriteria": "a recorded verdict on a gate registered before results were seen"
+      },
+      "intent": [
+        "Gates decide promotions, not P&L. HOLD on thin sample is correct.",
+        "Automatic evaluation is allowed; automatic promotion never is."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "gate",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "transition",
+      "type": "service",
+      "name": "Recorded transition",
+      "transform": {
+        "x": 2520,
+        "y": 650,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "The only thing that moves a stage or changes exposure"
+      },
+      "intent": [
+        "Never a side effect of merging code. A dry run authorizes nothing.",
+        "Only a recorded evaluator PASS authorizes it — a hand-written or stale PASS never does."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "platform",
+      "type": "service",
+      "name": "Platform revision",
+      "transform": {
+        "x": 60,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "scope": "fees, fills, taxonomy, execution, risk, provenance, metric definitions"
+      },
+      "intent": [
+        "A change to shared semantics silently invalidates evidence, so it is recorded like an experiment."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "impact",
+      "type": "concept",
+      "name": "Impact disposition",
+      "transform": {
+        "x": 470,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "blocking"
+      },
+      "intent": [
+        "Every affected active experiment must be dispositioned before the revision activates."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "issue",
+      "type": "service",
+      "name": "Issue",
+      "transform": {
+        "x": 60,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "Durable state for an anomaly, defect, incident or open question"
+      },
+      "intent": [
+        "Routes work to the role that already owns the surface — there is no fixer role.",
+        "Never changes a lifecycle state, gate or exposure as a side effect."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service",
+        "governance"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "role",
+      "type": "concept",
+      "name": "Owning role",
+      "transform": {
+        "x": 470,
+        "y": 1030,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "roles": [
+          "Control Tower",
+          "Research Lab",
+          "Live Ops",
+          "Platform Change Review"
+        ]
+      },
+      "intent": [
+        "Detail: kalshi-bot-control-plane.json"
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-idea",
+      "type": "concept",
+      "name": "IDEA",
+      "transform": {
+        "x": 880,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-probe",
+      "type": "concept",
+      "name": "PROBE",
+      "transform": {
+        "x": 1290,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-paper",
+      "type": "concept",
+      "name": "PAPER",
+      "transform": {
+        "x": 1700,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-canary",
+      "type": "concept",
+      "name": "LIVE_CANARY",
+      "transform": {
+        "x": 2110,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-prod",
+      "type": "concept",
+      "name": "PRODUCTION",
+      "transform": {
+        "x": 2520,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "s-end",
+      "type": "concept",
+      "name": "PAUSED / RETIRED",
+      "transform": {
+        "x": 2930,
+        "y": 1106,
+        "width": 260,
+        "height": 100,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "oval",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "xos"
+    },
+    {
+      "id": "control-plane-operator",
+      "type": "user",
+      "name": "Operator",
+      "transform": {
+        "x": 60,
+        "y": 953.9999999999999,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "owner of the real money",
+        "permissions": [
+          "arm live",
+          "set env",
+          "confirm exposure increases"
+        ]
+      },
+      "intent": [
+        "The only party that can expand real-money exposure."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "session",
+      "type": "user",
+      "name": "Agent session (Claude)",
+      "transform": {
+        "x": 60,
+        "y": 498.00000000000006,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "ellipse",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "role": "research / build / ops",
+        "sandbox": "cannot reach Railway, Postgres or most third-party APIs"
+      },
+      "intent": [
+        "Reads everything through the ops channel; writes only through a PR or the audited envelope."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "actor"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "roles",
+      "type": "concept",
+      "name": "Session role",
+      "transform": {
+        "x": 60,
+        "y": 346,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {
+        "status": "active",
+        "sticky": true,
+        "roles": [
+          "Experiment Control Tower",
+          "Evo Control Tower",
+          "Evo Ticket Workshop",
+          "Platform Change Review",
+          "Research Lab",
+          "Legacy Migration",
+          "Live Ops",
+          "task-specific"
+        ]
+      },
+      "intent": [
+        "An architectural constraint, not documentation: a read-only role that finds a needed write recommends the owning role."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "request",
+      "type": "queue",
+      "name": "ops/request.json",
+      "transform": {
+        "x": 470,
+        "y": 460,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "topic": "`ops` branch",
+        "types": [
+          "xos",
+          "db",
+          "logs",
+          "script",
+          "env",
+          "noop"
+        ],
+        "idRequired": true
+      },
+      "intent": [
+        "Shared and single-slot: concurrent sessions overwrite each other, so always use a unique id."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "runner",
+      "type": "service",
+      "name": "GitHub Actions runner",
+      "transform": {
+        "x": 880,
+        "y": 422,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "executes": "default-branch code only"
+      },
+      "intent": [
+        "A change on a feature branch cannot be exercised against production until it merges."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "analyses",
+      "type": "service",
+      "name": "Read-only analyses",
+      "transform": {
+        "x": 1290,
+        "y": 574,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "repository": "scripts/",
+        "runtime": "stdlib + psycopg only"
+      },
+      "intent": [
+        "Stdlib-only because the runner cannot import the worker package."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "pg-ro",
+      "type": "database",
+      "name": "Postgres — SELECT-only role",
+      "transform": {
+        "x": 1700,
+        "y": 764,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "violet",
+        "fill": "solid"
+      },
+      "properties": {
+        "enforcement": "server-side; no writable path may be added"
+      },
+      "intent": [
+        "The ops channel is read-only against production by design."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "database",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "results",
+      "type": "queue",
+      "name": "ops/results/<id>.txt",
+      "transform": {
+        "x": 1290,
+        "y": 726,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "green",
+        "fill": "solid"
+      },
+      "properties": {
+        "retention": "newest 80 files"
+      },
+      "intent": [
+        "Poll for your own per-id result, not the shared pointer. Budget minutes."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "pr",
+      "type": "service",
+      "name": "Pull request",
+      "transform": {
+        "x": 470,
+        "y": 308,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "responsibility": "The handoff — never chat"
+      },
+      "intent": [
+        "Reviewed change is how a session alters production behavior."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "default-branch",
+      "type": "concept",
+      "name": "Default branch",
+      "transform": {
+        "x": 880,
+        "y": 270,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "diamond",
+        "color": "yellow",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "What the runner executes and what Railway deploys — one code path, no drift."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "concept"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "envelope",
+      "type": "queue",
+      "name": "Production-write envelope",
+      "transform": {
+        "x": 470,
+        "y": 764,
+        "width": 300,
+        "height": 140,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "rectangle",
+        "color": "red",
+        "fill": "solid"
+      },
+      "properties": {
+        "transports": [
+          "issues",
+          "platform revisions",
+          "experiment lifecycle"
+        ],
+        "delivery": "exactly-once"
+      },
+      "intent": [
+        "Three disjoint transports on purpose — never one shared vocabulary (DEC-005).",
+        "Strictly validated, consumed once at boot against a durable receipt."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "queue",
+        "safety"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "worker-boot",
+      "type": "service",
+      "name": "Worker boot",
+      "transform": {
+        "x": 880,
+        "y": 840,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "blue",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [
+        "Only the worker holds a writable DATABASE_URL, so registering a Version is necessarily an operator action."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "control-plane-xos",
+      "type": "service",
+      "name": "Experiment OS write",
+      "transform": {
+        "x": 1290,
+        "y": 878,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "orange",
+        "fill": "solid"
+      },
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    },
+    {
+      "id": "control-plane-dashboards",
+      "type": "service",
+      "name": "Read-only dashboards",
+      "transform": {
+        "x": 1700,
+        "y": 953.9999999999999,
+        "width": 300,
+        "height": 120,
+        "rotation": 0
+      },
+      "appearance": {
+        "shape": "hexagon",
+        "color": "grey",
+        "fill": "solid"
+      },
+      "properties": {
+        "repository": "kalshi_bot/livedash/, dashboard/"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "service"
+      ],
+      "locked": false,
+      "parentElementId": "ops"
+    }
+  ],
+  "connections": [
+    {
+      "id": "m-kalshi-worker",
+      "sourceElementId": "kalshi",
+      "targetElementId": "main-worker",
+      "type": "flow",
+      "label": "market data",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-feeds-collect",
+      "sourceElementId": "feeds",
+      "targetElementId": "collectors",
+      "type": "flow",
+      "label": "forecasts, tapes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-llm-evo",
+      "sourceElementId": "llm",
+      "targetElementId": "evo-worker",
+      "type": "dependency",
+      "label": "cognition",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "dependency"
+      ]
+    },
+    {
+      "id": "m-worker-pipeline",
+      "sourceElementId": "main-worker",
+      "targetElementId": "pipeline",
+      "type": "flow",
+      "label": "each cycle",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-worker-collect",
+      "sourceElementId": "main-worker",
+      "targetElementId": "collectors",
+      "type": "flow",
+      "label": "ride-along",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-evo-fleet",
+      "sourceElementId": "evo-worker",
+      "targetElementId": "fleet",
+      "type": "flow",
+      "label": "hosts",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-pipeline-orders",
+      "sourceElementId": "pipeline",
+      "targetElementId": "orders",
+      "type": "flow",
+      "label": "real orders",
+      "properties": {},
+      "intent": [
+        "The only edge here that spends money."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    },
+    {
+      "id": "m-pipeline-pg",
+      "sourceElementId": "pipeline",
+      "targetElementId": "postgres",
+      "type": "flow",
+      "label": "trades + positions",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-collect-pg",
+      "sourceElementId": "collectors",
+      "targetElementId": "postgres",
+      "type": "flow",
+      "label": "datasets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-fleet-pg",
+      "sourceElementId": "fleet",
+      "targetElementId": "postgres",
+      "type": "dependency",
+      "label": "replay reads",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "dependency"
+      ]
+    },
+    {
+      "id": "m-pg-xos",
+      "sourceElementId": "postgres",
+      "targetElementId": "xos",
+      "type": "flow",
+      "label": "evidence",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-xos-pipeline",
+      "sourceElementId": "xos",
+      "targetElementId": "pipeline",
+      "type": "loop",
+      "label": "promote / pause / retire",
+      "properties": {},
+      "intent": [
+        "The feedback loop the whole system is built around: evidence decides which books keep running."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "governance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "m-fleet-xos",
+      "sourceElementId": "fleet",
+      "targetElementId": "xos",
+      "type": "dependency",
+      "label": "books register here",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    },
+    {
+      "id": "m-pg-dash",
+      "sourceElementId": "postgres",
+      "targetElementId": "dashboards",
+      "type": "flow",
+      "label": "read-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-dash-op",
+      "sourceElementId": "dashboards",
+      "targetElementId": "operator",
+      "type": "flow",
+      "label": "what it is doing",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-op-ops",
+      "sourceElementId": "operator",
+      "targetElementId": "ops",
+      "type": "flow",
+      "label": "requests",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "m-ops-pg",
+      "sourceElementId": "ops",
+      "targetElementId": "postgres",
+      "type": "dependency",
+      "label": "SELECT-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "control-plane"
+      ]
+    },
+    {
+      "id": "m-ops-xos",
+      "sourceElementId": "ops",
+      "targetElementId": "xos",
+      "type": "flow",
+      "label": "write envelope",
+      "properties": {},
+      "intent": [
+        "Consumed once at the worker's next boot — agents never write directly."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "control-plane",
+        "governance"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-kalshi-client",
+      "sourceElementId": "trading-pipeline-kalshi",
+      "targetElementId": "client",
+      "type": "dependency",
+      "label": "signed REST",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-config-client",
+      "sourceElementId": "config",
+      "targetElementId": "client",
+      "type": "dependency",
+      "label": "boot or exit",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-client-scanner",
+      "sourceElementId": "client",
+      "targetElementId": "scanner",
+      "type": "flow",
+      "label": "markets + books",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-scanner-db",
+      "sourceElementId": "scanner",
+      "targetElementId": "db-market",
+      "type": "flow",
+      "label": "snapshots + signals",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-scanner-universe",
+      "sourceElementId": "scanner",
+      "targetElementId": "universe",
+      "type": "flow",
+      "label": "scored markets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-books-universe",
+      "sourceElementId": "books",
+      "targetElementId": "universe",
+      "type": "dependency",
+      "label": "declares universe",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-universe-candidate",
+      "sourceElementId": "universe",
+      "targetElementId": "candidate",
+      "type": "flow",
+      "label": "eligible markets",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-books-candidate",
+      "sourceElementId": "books",
+      "targetElementId": "candidate",
+      "type": "flow",
+      "label": "entry rule + edge",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-books-obs",
+      "sourceElementId": "books",
+      "targetElementId": "obs",
+      "type": "flow",
+      "label": "funnel line",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-candidate-risk",
+      "sourceElementId": "candidate",
+      "targetElementId": "risk",
+      "type": "flow",
+      "label": "order intent",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-risk-paper",
+      "sourceElementId": "risk",
+      "targetElementId": "paper",
+      "type": "flow",
+      "label": "paper gates",
+      "properties": {
+        "skipped": "kill switch, mode, real balance"
+      },
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-risk-live",
+      "sourceElementId": "risk",
+      "targetElementId": "live",
+      "type": "flow",
+      "label": "all gates",
+      "properties": {},
+      "intent": [
+        "The gate that stops live is recorded, not just enforced — it is evidence for the parity study."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-live-twin",
+      "sourceElementId": "live",
+      "targetElementId": "twin",
+      "type": "relationship",
+      "label": "armed together",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "validation"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-paper-db",
+      "sourceElementId": "paper",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "paper trades",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-live-db",
+      "sourceElementId": "live",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "orders + fills",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-twin-db",
+      "sourceElementId": "twin",
+      "targetElementId": "db-trading",
+      "type": "flow",
+      "label": "parity events",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "trading-pipeline-p-live-orders",
+      "sourceElementId": "live",
+      "targetElementId": "trading-pipeline-orders",
+      "type": "flow",
+      "label": "real orders",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "real-money"
+      ]
+    },
+    {
+      "id": "research-data-r-nws-w",
+      "sourceElementId": "nws",
+      "targetElementId": "weather-collect",
+      "type": "flow",
+      "label": "forecasts + obs",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-om-w",
+      "sourceElementId": "openmeteo",
+      "targetElementId": "weather-collect",
+      "type": "flow",
+      "label": "HRRR + ensembles",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-pm-c",
+      "sourceElementId": "polymarket",
+      "targetElementId": "pm-collect",
+      "type": "flow",
+      "label": "implied prices",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-cb-t",
+      "sourceElementId": "coinbase",
+      "targetElementId": "theta-collect",
+      "type": "flow",
+      "label": "1-min candles",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-hist-x",
+      "sourceElementId": "kalshi-hist",
+      "targetElementId": "xgame-collect",
+      "type": "flow",
+      "label": "trade tapes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-hist-b",
+      "sourceElementId": "kalshi-hist",
+      "targetElementId": "backfill",
+      "type": "flow",
+      "label": "settled history",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-w-t",
+      "sourceElementId": "weather-collect",
+      "targetElementId": "t-weather",
+      "type": "flow",
+      "label": "stored per cycle",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-c-t",
+      "sourceElementId": "pm-collect",
+      "targetElementId": "t-poly",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-t-t",
+      "sourceElementId": "theta-collect",
+      "targetElementId": "t-crypto",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-x-t",
+      "sourceElementId": "xgame-collect",
+      "targetElementId": "t-game",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-b-t",
+      "sourceElementId": "backfill",
+      "targetElementId": "t-backfill",
+      "type": "flow",
+      "label": "stored",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-tw-out",
+      "sourceElementId": "t-weather",
+      "targetElementId": "outcomes",
+      "type": "flow",
+      "label": "replayed at settlement",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-tb-out",
+      "sourceElementId": "t-backfill",
+      "targetElementId": "outcomes",
+      "type": "dependency",
+      "label": "adds sample",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-tp-out",
+      "sourceElementId": "t-poly",
+      "targetElementId": "outcomes",
+      "type": "dependency",
+      "label": "cross-venue column",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-out-score",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-score",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-out-model",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-model",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-out-sweep",
+      "sourceElementId": "outcomes",
+      "targetElementId": "a-sweep",
+      "type": "flow",
+      "label": "price paths",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-tc-theta",
+      "sourceElementId": "t-crypto",
+      "targetElementId": "a-theta",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-tg-x",
+      "sourceElementId": "t-game",
+      "targetElementId": "a-xgame",
+      "type": "flow",
+      "label": "graded",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-score-v",
+      "sourceElementId": "a-score",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-model-v",
+      "sourceElementId": "a-model",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-sweep-v",
+      "sourceElementId": "a-sweep",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-theta-v",
+      "sourceElementId": "a-theta",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-x-v",
+      "sourceElementId": "a-xgame",
+      "targetElementId": "verdict",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-v-gate",
+      "sourceElementId": "verdict",
+      "targetElementId": "gate",
+      "type": "flow",
+      "label": "read into a gate",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "research-data-r-gate-books",
+      "sourceElementId": "gate",
+      "targetElementId": "research-data-books",
+      "type": "flow",
+      "label": "only a PASS wires a book",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-llm-hb",
+      "sourceElementId": "evo-fleet-llm",
+      "targetElementId": "heartbeat",
+      "type": "dependency",
+      "label": "one call per beat",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-ceil-hb",
+      "sourceElementId": "ceilings",
+      "targetElementId": "heartbeat",
+      "type": "dependency",
+      "label": "checked first",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-orch-hb",
+      "sourceElementId": "orchestrator",
+      "targetElementId": "heartbeat",
+      "type": "flow",
+      "label": "due slots",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-listen-hb",
+      "sourceElementId": "listeners",
+      "targetElementId": "heartbeat",
+      "type": "flow",
+      "label": "triggered wake",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-hb-research",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "research",
+      "type": "flow",
+      "label": "retrieves",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-hb-sandbox",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "sandbox",
+      "type": "flow",
+      "label": "tests a rule",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-hb-memory",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "memory",
+      "type": "flow",
+      "label": "journals",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-sandbox-search",
+      "sourceElementId": "sandbox",
+      "targetElementId": "search",
+      "type": "flow",
+      "label": "bounded replay",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-hb-paper",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "evo-fleet-paper",
+      "type": "flow",
+      "label": "opens a position",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-xos-paper",
+      "sourceElementId": "evo-fleet-xos",
+      "targetElementId": "evo-fleet-paper",
+      "type": "dependency",
+      "label": "tag must be registered",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "governance"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-paper-trades",
+      "sourceElementId": "evo-fleet-paper",
+      "targetElementId": "trades",
+      "type": "flow",
+      "label": "trades + marks",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-trades-fitness",
+      "sourceElementId": "trades",
+      "targetElementId": "fitness",
+      "type": "flow",
+      "label": "scored per cohort",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-fitness-cohort",
+      "sourceElementId": "fitness",
+      "targetElementId": "cohort",
+      "type": "flow",
+      "label": "ranked",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-cohort-retire",
+      "sourceElementId": "cohort",
+      "targetElementId": "retire",
+      "type": "flow",
+      "label": "bottom 30%",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-cohort-repro",
+      "sourceElementId": "cohort",
+      "targetElementId": "reproduce",
+      "type": "flow",
+      "label": "top 30%",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-retire-grave",
+      "sourceElementId": "retire",
+      "targetElementId": "graveyard",
+      "type": "flow",
+      "label": "searchable forever",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-repro-orch",
+      "sourceElementId": "reproduce",
+      "targetElementId": "orchestrator",
+      "type": "loop",
+      "label": "children join the next cohort",
+      "properties": {},
+      "intent": [
+        "The evolutionary loop: fitness decides who reproduces, and the population turns over weekly."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-grave-research",
+      "sourceElementId": "graveyard",
+      "targetElementId": "research",
+      "type": "dependency",
+      "label": "prior failures are readable",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-hb-tickets",
+      "sourceElementId": "heartbeat",
+      "targetElementId": "tickets",
+      "type": "flow",
+      "label": "asks for a capability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-tickets-triage",
+      "sourceElementId": "tickets",
+      "targetElementId": "triage",
+      "type": "flow",
+      "label": "reviewed",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "evo-fleet-e-triage-research",
+      "sourceElementId": "triage",
+      "targetElementId": "research",
+      "type": "loop",
+      "label": "shipped capability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-exp-version",
+      "sourceElementId": "experiment",
+      "targetElementId": "version",
+      "type": "flow",
+      "label": "freezes a contract",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-exp-epoch",
+      "sourceElementId": "experiment",
+      "targetElementId": "epoch",
+      "type": "flow",
+      "label": "world changed",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-version-dep",
+      "sourceElementId": "version",
+      "targetElementId": "deployment",
+      "type": "flow",
+      "label": "arms one arm",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-epoch-dep",
+      "sourceElementId": "epoch",
+      "targetElementId": "deployment",
+      "type": "dependency",
+      "label": "resets poolability",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-dep-tag",
+      "sourceElementId": "deployment",
+      "targetElementId": "tag",
+      "type": "flow",
+      "label": "grants a tag",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-enf-tag",
+      "sourceElementId": "enforcement",
+      "targetElementId": "tag",
+      "type": "dependency",
+      "label": "unregistered → refused",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "experiment-os-x-tag-books",
+      "sourceElementId": "tag",
+      "targetElementId": "experiment-os-books",
+      "type": "flow",
+      "label": "may trade",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-books-evidence",
+      "sourceElementId": "experiment-os-books",
+      "targetElementId": "evidence",
+      "type": "flow",
+      "label": "trades + parity",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-evidence-gate",
+      "sourceElementId": "evidence",
+      "targetElementId": "experiment-os-gate",
+      "type": "flow",
+      "label": "graded on a cadence",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-gate-transition",
+      "sourceElementId": "experiment-os-gate",
+      "targetElementId": "transition",
+      "type": "flow",
+      "label": "recorded PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-transition-tag",
+      "sourceElementId": "transition",
+      "targetElementId": "enforcement",
+      "type": "loop",
+      "label": "arms / pauses the tag",
+      "properties": {},
+      "intent": [
+        "The loop that closes the system: evidence decides which tags keep trading."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "governance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-transition-stage",
+      "sourceElementId": "transition",
+      "targetElementId": "s-paper",
+      "type": "flow",
+      "label": "moves the stage",
+      "properties": {},
+      "intent": [
+        "Promotion PAPER → LIVE_CANARY is the transition that costs real money."
+      ],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-platform-impact",
+      "sourceElementId": "platform",
+      "targetElementId": "impact",
+      "type": "flow",
+      "label": "forces a disposition",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-impact-exp",
+      "sourceElementId": "impact",
+      "targetElementId": "experiment",
+      "type": "dependency",
+      "label": "per affected experiment",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-issue-role",
+      "sourceElementId": "issue",
+      "targetElementId": "role",
+      "type": "flow",
+      "label": "routes work",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "experiment-os-x-idea-probe",
+      "sourceElementId": "s-idea",
+      "targetElementId": "s-probe",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-probe-paper",
+      "sourceElementId": "s-probe",
+      "targetElementId": "s-paper",
+      "type": "flow",
+      "label": "",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-paper-canary",
+      "sourceElementId": "s-paper",
+      "targetElementId": "s-canary",
+      "type": "flow",
+      "label": "gate PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-canary-prod",
+      "sourceElementId": "s-canary",
+      "targetElementId": "s-prod",
+      "type": "flow",
+      "label": "gate PASS",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "experiment-os-x-prod-end",
+      "sourceElementId": "s-prod",
+      "targetElementId": "s-end",
+      "type": "flow",
+      "label": "any stage",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "control-plane-c-op-session",
+      "sourceElementId": "control-plane-operator",
+      "targetElementId": "session",
+      "type": "flow",
+      "label": "names the role",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-session-roles",
+      "sourceElementId": "session",
+      "targetElementId": "roles",
+      "type": "dependency",
+      "label": "bounds writes",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-session-request",
+      "sourceElementId": "session",
+      "targetElementId": "request",
+      "type": "flow",
+      "label": "pushes a request",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-request-runner",
+      "sourceElementId": "request",
+      "targetElementId": "runner",
+      "type": "flow",
+      "label": "fires a run",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-runner-analyses",
+      "sourceElementId": "runner",
+      "targetElementId": "analyses",
+      "type": "flow",
+      "label": "runs default-branch code",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-analyses-pg",
+      "sourceElementId": "analyses",
+      "targetElementId": "pg-ro",
+      "type": "dependency",
+      "label": "SELECT only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "control-plane-c-pg-results",
+      "sourceElementId": "pg-ro",
+      "targetElementId": "results",
+      "type": "flow",
+      "label": "rows out",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-results-session",
+      "sourceElementId": "results",
+      "targetElementId": "session",
+      "type": "loop",
+      "label": "committed back",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-session-pr",
+      "sourceElementId": "session",
+      "targetElementId": "pr",
+      "type": "flow",
+      "label": "opens",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-pr-default",
+      "sourceElementId": "pr",
+      "targetElementId": "default-branch",
+      "type": "flow",
+      "label": "merged",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-default-runner",
+      "sourceElementId": "default-branch",
+      "targetElementId": "runner",
+      "type": "dependency",
+      "label": "is what runs",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-op-envelope",
+      "sourceElementId": "control-plane-operator",
+      "targetElementId": "envelope",
+      "type": "flow",
+      "label": "sets the env var",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "control-plane-c-session-envelope",
+      "sourceElementId": "session",
+      "targetElementId": "envelope",
+      "type": "dependency",
+      "label": "drafts, batched",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-envelope-boot",
+      "sourceElementId": "envelope",
+      "targetElementId": "worker-boot",
+      "type": "flow",
+      "label": "consumed once",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-boot-xos",
+      "sourceElementId": "worker-boot",
+      "targetElementId": "control-plane-xos",
+      "type": "flow",
+      "label": "applies the write",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-pg-dash",
+      "sourceElementId": "pg-ro",
+      "targetElementId": "control-plane-dashboards",
+      "type": "flow",
+      "label": "read-only",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    },
+    {
+      "id": "control-plane-c-dash-op",
+      "sourceElementId": "control-plane-dashboards",
+      "targetElementId": "control-plane-operator",
+      "type": "flow",
+      "label": "live state",
+      "properties": {},
+      "intent": [],
+      "implementationNotes": [],
+      "tags": [
+        "flow"
+      ]
+    }
+  ],
+  "groups": [],
+  "assets": [],
+  "metadata": {
+    "source": "50thycal/kalshi_bot — README.md, docs/PROJECT_MODEL.md, CLAUDE.md",
+    "asOf": "2026-09-06",
+    "layout": "left-to-right rank grid; hub nodes may be mirrored (see properties.mirrorOf)",
+    "altitude": "root: subsystems; each service zooms into its own level",
+    "levels": [
+      {
+        "element": "pipeline",
+        "source": "kalshi-bot-trading-pipeline.json",
+        "objects": 15
+      },
+      {
+        "element": "collectors",
+        "source": "kalshi-bot-research-data.json",
+        "objects": 24
+      },
+      {
+        "element": "fleet",
+        "source": "kalshi-bot-evo-fleet.json",
+        "objects": 20
+      },
+      {
+        "element": "xos",
+        "source": "kalshi-bot-experiment-os.json",
+        "objects": 20
+      },
+      {
+        "element": "ops",
+        "source": "kalshi-bot-control-plane.json",
+        "objects": 14
+      }
+    ]
+  }
+}

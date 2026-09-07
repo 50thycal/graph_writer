@@ -30,6 +30,8 @@ export const StudioElementSchema = z.object({
   implementationNotes: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   locked: z.boolean().optional(),
+  /** Altitude link: this element lives inside the detail level of another element. Omitted for the root level. */
+  parentElementId: z.string().min(1).optional(),
 });
 
 export const StudioConnectionSchema = z.object({
@@ -62,16 +64,40 @@ export const StudioDocumentSchema = z.object({
     }
     assetIds.add(asset.id);
   }
+  const parentById = new Map<string, string | undefined>();
   for (const [index, element] of document.elements.entries()) {
     if (elementIds.has(element.id)) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "id"], message: `Duplicate element ID: ${element.id}` });
     }
     elementIds.add(element.id);
+    parentById.set(element.id, element.parentElementId);
     if (element.type === "reference-image") {
       const assetId = element.content?.assetId;
       if (typeof assetId !== "string" || !assetIds.has(assetId)) {
         context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "content", "assetId"], message: `Missing reference image asset: ${String(assetId)}` });
       }
+    }
+  }
+
+  for (const [index, element] of document.elements.entries()) {
+    if (element.parentElementId === undefined) continue;
+    if (element.parentElementId === element.id) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "parentElementId"], message: `Element ${element.id} cannot be its own parent` });
+      continue;
+    }
+    if (!elementIds.has(element.parentElementId)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "parentElementId"], message: `Missing parent element: ${element.parentElementId}` });
+      continue;
+    }
+    const visited = new Set<string>([element.id]);
+    let cursor: string | undefined = element.parentElementId;
+    while (cursor !== undefined) {
+      if (visited.has(cursor)) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["elements", index, "parentElementId"], message: `Element ${element.id} is nested inside itself` });
+        break;
+      }
+      visited.add(cursor);
+      cursor = parentById.get(cursor);
     }
   }
 
